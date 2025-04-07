@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.example.ratertune.utils.SessionManager;
 
 public class AuthActivity extends AppCompatActivity {
     private TextInputLayout emailLayout, passwordLayout;
@@ -18,6 +19,7 @@ public class AuthActivity extends AppCompatActivity {
     private MaterialButton loginButton;
     private TextView registerButton, authTitleText, promptText;
     private boolean isLoginMode = true;
+    private SessionManager sessionManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,6 +28,16 @@ public class AuthActivity extends AppCompatActivity {
         // Инициализируем Config для загрузки переменных из .env
         Config.init(this);
         
+        sessionManager = new SessionManager(this);
+        
+        // Проверяем, есть ли активная сессия
+        if (sessionManager.isLoggedIn()) {
+            // Если есть, переходим на главный экран
+            startActivity(new Intent(this, MainActivity.class));
+            finish();
+            return;
+        }
+
         setContentView(R.layout.activity_auth);
 
         // Инициализация элементов UI
@@ -95,6 +107,7 @@ public class AuthActivity extends AppCompatActivity {
                 @Override
                 public void onSuccess() {
                     showProgress(false);
+                    sessionManager.createLoginSession("user123", email, "User Name", "access_token", "refresh_token");
                     navigateToMain();
                 }
 

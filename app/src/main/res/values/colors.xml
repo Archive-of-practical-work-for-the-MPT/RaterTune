@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="background">#0A0A0A</color>
+    <color name="card_background">#1A1A1A</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B3FFFFFF</color>
+    <color name="accent">#7B2CBF</color>
+    <color name="accent_light">#9D4EDD</color>
+    <color name="accent_dark">#5A189A</color>
+    <color name="transparent_white">#33FFFFFF</color>
+    <color name="transparent_black">#80000000</color>
 </resources>
