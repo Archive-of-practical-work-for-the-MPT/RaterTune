@@ -22,7 +22,7 @@
                 android:id="@+id/backButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/ripple_circle_background"
                 android:src="@drawable/ic_back"
                 android:tint="@color/text_primary" />
 
@@ -32,8 +32,8 @@
                 android:layout_gravity="center"
                 android:text="Профиль"
                 android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:textSize="20sp"
+                android:fontFamily="sans-serif-medium" />
 
         </androidx.appcompat.widget.Toolbar>
 
@@ -48,31 +48,37 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="16dp">
 
             <!-- Информация о пользователе -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
+                android:layout_marginBottom="24dp"
                 app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp">
+                app:cardCornerRadius="28dp"
+                app:cardElevation="2dp"
+                app:strokeColor="@color/transparent_white"
+                app:strokeWidth="0.5dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="16dp">
+                    android:padding="24dp">
 
-                    <ImageView
+                    <com.google.android.material.imageview.ShapeableImageView
                         android:id="@+id/profileImage"
                         android:layout_width="100dp"
                         android:layout_height="100dp"
                         android:layout_gravity="center_horizontal"
                         android:layout_marginBottom="16dp"
+                        android:scaleType="centerCrop"
                         android:src="@drawable/ic_profile"
-                        android:tint="@color/text_primary" />
+                        app:shapeAppearanceOverlay="@style/CircleImage"
+                        app:strokeColor="@color/accent"
+                        app:strokeWidth="2dp" />
 
                     <TextView
                         android:id="@+id/userNameText"
@@ -80,36 +86,110 @@
                         android:layout_height="wrap_content"
                         android:gravity="center"
                         android:textColor="@color/text_primary"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
+                        android:textSize="22sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:layout_marginBottom="4dp" />
 
                     <TextView
                         android:id="@+id/userEmailText"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
                         android:gravity="center"
                         android:textColor="@color/text_secondary"
-                        android:textSize="14sp" />
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif" />
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
-
-            <!-- Статистика -->
-            <androidx.cardview.widget.CardView
+            </com.google.android.material.card.MaterialCardView>
+            
+            <!-- Редактирование никнейма -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
                 app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp">
+                app:cardCornerRadius="28dp"
+                app:cardElevation="2dp"
+                app:strokeColor="@color/transparent_white"
+                app:strokeWidth="0.5dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="16dp"
+                        android:text="Изменить никнейм"
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/usernameLayout"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Новый никнейм"
+                        android:textColorHint="@color/text_secondary"
+                        app:boxBackgroundColor="@color/card_background"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/accent"
+                        app:boxStrokeWidth="1.5dp"
+                        app:hintTextColor="@color/accent">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/usernameInput"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPersonName"
+                            android:textColor="@color/text_primary"
+                            android:fontFamily="sans-serif-medium"
+                            android:paddingVertical="16dp" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/saveUsernameButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:backgroundTint="@color/accent"
+                        android:text="Сохранить"
+                        android:textColor="@color/text_primary"
+                        android:paddingVertical="12dp"
+                        android:fontFamily="sans-serif-medium"
+                        app:cornerRadius="16dp"
+                        app:rippleColor="@color/accent_light"
+                        android:textSize="16sp" />
+
+                </LinearLayout>
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Статистика -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                app:cardBackgroundColor="@color/card_background"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="2dp"
+                app:strokeColor="@color/transparent_white"
+                app:strokeWidth="0.5dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:padding="16dp">
+                    android:padding="24dp">
 
                     <LinearLayout
                         android:layout_width="0dp"
@@ -124,7 +204,8 @@
                             android:layout_height="wrap_content"
                             android:text="0"
                             android:textColor="@color/text_primary"
-                            android:textSize="24sp"
+                            android:textSize="28sp"
+                            android:fontFamily="sans-serif-medium"
                             android:textStyle="bold" />
 
                         <TextView
@@ -132,7 +213,8 @@
                             android:layout_height="wrap_content"
                             android:text="Рецензий"
                             android:textColor="@color/text_secondary"
-                            android:textSize="14sp" />
+                            android:textSize="14sp"
+                            android:fontFamily="sans-serif" />
 
                     </LinearLayout>
 
@@ -155,7 +237,8 @@
                             android:layout_height="wrap_content"
                             android:text="0.0"
                             android:textColor="@color/text_primary"
-                            android:textSize="24sp"
+                            android:textSize="28sp"
+                            android:fontFamily="sans-serif-medium"
                             android:textStyle="bold" />
 
                         <TextView
@@ -163,25 +246,55 @@
                             android:layout_height="wrap_content"
                             android:text="Средняя оценка"
                             android:textColor="@color/text_secondary"
-                            android:textSize="14sp" />
+                            android:textSize="14sp"
+                            android:fontFamily="sans-serif" />
 
                     </LinearLayout>
 
                 </LinearLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Кнопка выхода -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/logoutButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:backgroundTint="@color/accent"
+                android:backgroundTint="@color/accent_dark"
                 android:text="Выйти из аккаунта"
-                android:textColor="@color/text_primary" />
+                android:textColor="@color/text_primary"
+                android:paddingVertical="14dp"
+                android:fontFamily="sans-serif-medium"
+                app:cornerRadius="18dp"
+                app:rippleColor="@color/accent"
+                app:strokeColor="@color/transparent_white"
+                app:strokeWidth="0.5dp"
+                android:textSize="16sp" />
 
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
+    
+    <!-- Индикатор загрузки -->
+    <FrameLayout
+        android:id="@+id/profileProgressOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.7"
+        android:background="@color/transparent_black"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            app:indicatorColor="@color/accent"
+            app:indicatorSize="60dp"
+            app:trackColor="@color/transparent_white"
+            app:trackThickness="5dp"
+            android:indeterminate="true" />
+    </FrameLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout> 

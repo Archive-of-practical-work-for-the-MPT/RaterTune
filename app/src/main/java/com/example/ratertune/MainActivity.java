@@ -3,25 +3,33 @@ package com.example.ratertune;
 import android.content.Intent;
 import android.os.Bundle;
 import android.widget.ImageButton;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
-import com.example.ratertune.adapter.ReleasesPagerAdapter;
+import com.example.ratertune.adapter.ReleasesAdapter;
+import com.example.ratertune.api.SupabaseClient;
 import com.example.ratertune.model.Release;
 import com.example.ratertune.utils.SessionManager;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
-    private ViewPager2 releasesPager;
+public class MainActivity extends AppCompatActivity implements ReleasesAdapter.OnReleaseClickListener {
+    private RecyclerView releasesRecyclerView;
     private ImageButton profileButton;
     private ImageButton addReleaseButton;
     private SessionManager sessionManager;
+    private List<Release> releasesList;
+    private ReleasesAdapter releasesAdapter;
+    private SupabaseClient supabaseClient;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         sessionManager = new SessionManager(this);
+        supabaseClient = SupabaseClient.getInstance();
         
         // Проверяем, есть ли активная сессия
         if (!sessionManager.isLoggedIn()) {
@@ -34,13 +42,18 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         // Инициализация компонентов
-        releasesPager = findViewById(R.id.releasesPager);
+        releasesRecyclerView = findViewById(R.id.releasesRecyclerView);
         profileButton = findViewById(R.id.profileButton);
         addReleaseButton = findViewById(R.id.addReleaseButton);
 
-        // Настройка ViewPager
-        List<Release> releases = new ArrayList<>();
-        releasesPager.setAdapter(new ReleasesPagerAdapter(releases));
+        // Настройка RecyclerView
+        releasesList = new ArrayList<>();
+        releasesAdapter = new ReleasesAdapter(releasesList, this);
+        
+        // Устанавливаем сетку 2 колонки
+        GridLayoutManager layoutManager = new GridLayoutManager(this, 2);
+        releasesRecyclerView.setLayoutManager(layoutManager);
+        releasesRecyclerView.setAdapter(releasesAdapter);
 
         // Обработчики нажатий
         profileButton.setOnClickListener(v -> {
@@ -50,5 +63,73 @@ public class MainActivity extends AppCompatActivity {
         addReleaseButton.setOnClickListener(v -> {
             startActivity(new Intent(this, AddReleaseActivity.class));
         });
+        
+        // Загружаем альбомы пользователя
+        loadUserReleases();
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Обновляем список альбомов при возврате на экран
+        loadUserReleases();
+    }
+    
+    /**
+     * Загружает альбомы пользователя из Supabase
+     */
+    private void loadUserReleases() {
+        String userId = sessionManager.getUserId();
+        String token = sessionManager.getAccessToken();
+        
+        if (userId == null || token == null) {
+            Toast.makeText(this, "Ошибка авторизации", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        supabaseClient.getUserReleases(userId, token, new SupabaseClient.ReleasesListCallback() {
+            @Override
+            public void onSuccess(List<SupabaseClient.Release> releases) {
+                // Конвертируем SupabaseClient.Release в нашу модель Release
+                releasesList.clear();
+                
+                for (SupabaseClient.Release release : releases) {
+                    // Используем 0.0f как временную оценку, так как в текущей реализации нет оценок
+                    Release modelRelease = new Release(
+                            String.valueOf(release.getId()),
+                            release.getTitle(),
+                            release.getArtist(),
+                            release.getCoverUrl(),
+                            0.0f,
+                            release.getReleaseDate()
+                    );
+                    releasesList.add(modelRelease);
+                }
+                
+                // Обновляем UI в основном потоке
+                runOnUiThread(() -> {
+                    releasesAdapter.notifyDataSetChanged();
+                    
+                    if (releasesList.isEmpty()) {
+                        Toast.makeText(MainActivity.this, "У вас пока нет добавленных альбомов", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+            
+            @Override
+            public void onError(String errorMessage) {
+                // Обработка ошибки в основном потоке
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Ошибка загрузки альбомов: " + errorMessage, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+    
+    @Override
+    public void onReleaseClick(Release release) {
+        // Здесь можно открыть детальную информацию о релизе
+        Toast.makeText(this, "Выбран альбом: " + release.getTitle(), Toast.LENGTH_SHORT).show();
+        // TODO: Добавить переход на экран деталей альбома
     }
 }

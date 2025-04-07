@@ -1,0 +1,982 @@
+package com.example.ratertune.api;
+
+import android.content.Context;
+import android.net.Uri;
+import android.util.Log;
+
+import com.example.ratertune.BuildConfig;
+import com.example.ratertune.utils.Config;
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.annotations.SerializedName;
+import com.google.gson.reflect.TypeToken;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.reflect.Type;
+import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.logging.HttpLoggingInterceptor;
+
+/**
+ * Клиент для взаимодействия с Supabase API
+ */
+public class SupabaseClient {
+    private static final String TAG = "SupabaseClient";
+    private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
+    private static SupabaseClient instance;
+    private final OkHttpClient client;
+    private String supabaseUrl;
+    private String supabaseKey;
+    private final Gson gson;
+    private boolean isConfigValid = false;
+
+    private SupabaseClient() {
+        // Получаем URL и ключ из конфигурационного файла
+        supabaseUrl = Config.get("SUPABASE_URL");
+        supabaseKey = Config.get("SUPABASE_KEY");
+
+        // Если URL или ключ отсутствуют, попробуем получить из BuildConfig
+        if (supabaseUrl == null || supabaseKey == null) {
+            Log.w(TAG, "Trying to get credentials from BuildConfig");
+            try {
+                // Используем значения из BuildConfig если они определены
+                supabaseUrl = BuildConfig.SUPABASE_URL;
+                supabaseKey = BuildConfig.SUPABASE_KEY;
+                
+                // Проверка на временные placeholder значения из BuildConfig
+                if ("SUPABASE_URL".equals(supabaseUrl) || "SUPABASE_KEY".equals(supabaseKey)) {
+                    Log.e(TAG, "BuildConfig contains placeholder values");
+                    supabaseUrl = null;
+                    supabaseKey = null;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error accessing BuildConfig fields", e);
+            }
+        }
+
+        // Финальная проверка URL и ключа
+        if (supabaseUrl == null || supabaseKey == null) {
+            Log.e(TAG, "Supabase URL or Key not found in configuration!");
+            // Устанавливаем временные значения для предотвращения NullPointerException
+            supabaseUrl = "https://example.com";
+            supabaseKey = "temp_key";
+            isConfigValid = false;
+        } else {
+            // Проверяем формат URL, чтобы он начинался с http:// или https://
+            if (!supabaseUrl.startsWith("http://") && !supabaseUrl.startsWith("https://")) {
+                supabaseUrl = "https://" + supabaseUrl;
+                Log.w(TAG, "Added https:// prefix to Supabase URL");
+            }
+            isConfigValid = true;
+            Log.i(TAG, "Supabase configuration loaded successfully: " + supabaseUrl);
+        }
+
+        // Настраиваем HTTP-клиент с логированием
+        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
+        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+
+        client = new OkHttpClient.Builder()
+                .addInterceptor(loggingInterceptor)
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .build();
+
+        gson = new Gson();
+    }
+
+    /**
+     * Получает единственный экземпляр клиента
+     */
+    public static synchronized SupabaseClient getInstance() {
+        if (instance == null) {
+            instance = new SupabaseClient();
+        }
+        return instance;
+    }
+
+    /**
+     * Интерфейс для обратного вызова авторизации
+     */
+    public interface AuthCallback {
+        void onSuccess(AuthResponse response);
+        void onError(String errorMessage);
+    }
+
+    /**
+     * Регистрирует нового пользователя
+     */
+    public void signUp(String email, String password, AuthCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                JsonObject requestJson = new JsonObject();
+                requestJson.addProperty("email", email);
+                requestJson.addProperty("password", password);
+
+                Request request = new Request.Builder()
+                        .url(supabaseUrl + "/auth/v1/signup")
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Content-Type", "application/json")
+                        .post(RequestBody.create(requestJson.toString(), JSON))
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    
+                    if (response.isSuccessful() && !responseBody.isEmpty()) {
+                        AuthResponse authResponse = gson.fromJson(responseBody, AuthResponse.class);
+                        if (authResponse != null && authResponse.getUser() != null) {
+                            callback.onSuccess(authResponse);
+                        } else {
+                            callback.onError("Registration failed: Invalid response format");
+                        }
+                    } else {
+                        String errorMessage = parseErrorMessage(responseBody, response.code());
+                        callback.onError("Registration failed: " + errorMessage);
+                    }
+                }
+            } catch (UnknownHostException e) {
+                Log.e(TAG, "Network error during signup: Unknown host", e);
+                callback.onError("Network error: Не удалось подключиться к серверу. Проверьте интернет-соединение.");
+            } catch (SocketTimeoutException e) {
+                Log.e(TAG, "Network timeout during signup", e);
+                callback.onError("Network error: Сервер не отвечает. Попробуйте позже.");
+            } catch (IOException e) {
+                Log.e(TAG, "Error during signup", e);
+                callback.onError("Network error: " + e.getMessage());
+            } catch (Exception e) {
+                Log.e(TAG, "Unexpected error during signup", e);
+                callback.onError("Unexpected error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Выполняет вход существующего пользователя
+     */
+    public void signIn(String email, String password, AuthCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                JsonObject requestJson = new JsonObject();
+                requestJson.addProperty("email", email);
+                requestJson.addProperty("password", password);
+
+                Request request = new Request.Builder()
+                        .url(supabaseUrl + "/auth/v1/token?grant_type=password")
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Content-Type", "application/json")
+                        .post(RequestBody.create(requestJson.toString(), JSON))
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    
+                    if (response.isSuccessful() && !responseBody.isEmpty()) {
+                        AuthResponse authResponse = gson.fromJson(responseBody, AuthResponse.class);
+                        if (authResponse != null && authResponse.getUser() != null) {
+                            callback.onSuccess(authResponse);
+                        } else {
+                            callback.onError("Login failed: Invalid response format");
+                        }
+                    } else {
+                        String errorMessage = parseErrorMessage(responseBody, response.code());
+                        callback.onError("Login failed: " + errorMessage);
+                    }
+                }
+            } catch (UnknownHostException e) {
+                Log.e(TAG, "Network error during signin: Unknown host", e);
+                callback.onError("Network error: Не удалось подключиться к серверу. Проверьте интернет-соединение.");
+            } catch (SocketTimeoutException e) {
+                Log.e(TAG, "Network timeout during signin", e);
+                callback.onError("Network error: Сервер не отвечает. Попробуйте позже.");
+            } catch (IOException e) {
+                Log.e(TAG, "Error during signin", e);
+                callback.onError("Network error: " + e.getMessage());
+            } catch (Exception e) {
+                Log.e(TAG, "Unexpected error during signin", e);
+                callback.onError("Unexpected error: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Обновляет данные профиля пользователя
+     * @param userId ID пользователя
+     * @param newUsername новое имя пользователя
+     * @param token токен доступа
+     * @param callback обратный вызов с результатом операции
+     */
+    public void updateUserProfile(String userId, String newUsername, String token, ProfileUpdateCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Подготавливаем данные для обновления
+                JsonObject userMetadata = new JsonObject();
+                userMetadata.addProperty("name", newUsername);
+                
+                JsonObject requestJson = new JsonObject();
+                requestJson.add("data", userMetadata);
+
+                // Логируем запрос
+                Log.d(TAG, "Update profile request: " + requestJson.toString());
+
+                // Создаем запрос к Supabase API
+                Request request = new Request.Builder()
+                        .url(supabaseUrl + "/auth/v1/user")
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .addHeader("Content-Type", "application/json")
+                        .put(RequestBody.create(requestJson.toString(), JSON))
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    
+                    Log.d(TAG, "Update profile response: " + responseBody);
+                    
+                    if (response.isSuccessful() && !responseBody.isEmpty()) {
+                        // Создаем временный объект пользователя с новым именем
+                        // Это нужно, т.к. API может не вернуть обновленные метаданные сразу
+                        User tempUser = new User();
+                        
+                        try {
+                            // Пробуем получить данные из ответа
+                            User updatedUser = gson.fromJson(responseBody, User.class);
+                            
+                            if (updatedUser != null) {
+                                // Логируем метаданные для отладки
+                                Log.d(TAG, "User metadata from response: " + updatedUser.getMetadataDebug());
+                                
+                                // Проверяем, есть ли имя в метаданных
+                                String userName = updatedUser.getName();
+                                if (userName != null && !userName.equals(newUsername)) {
+                                    // Если имя из метаданных не совпадает с запрошенным,
+                                    // создаем объект с принудительно установленным именем
+                                    Log.w(TAG, "Name in response (" + userName + ") doesn't match requested name (" + newUsername + ")");
+                                    tempUser = updatedUser;
+                                    
+                                    // Создаем метаданные с новым именем
+                                    JsonObject metadata = new JsonObject();
+                                    metadata.addProperty("name", newUsername);
+                                    
+                                    try {
+                                        // Используем рефлексию для установки метаданных
+                                        java.lang.reflect.Field field = User.class.getDeclaredField("metadata");
+                                        field.setAccessible(true);
+                                        field.set(tempUser, metadata);
+                                    } catch (Exception e) {
+                                        Log.e(TAG, "Failed to set metadata via reflection", e);
+                                    }
+                                } else {
+                                    // Имя совпадает, используем полученный объект
+                                    tempUser = updatedUser;
+                                }
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error parsing user from response", e);
+                        }
+                        
+                        // Если у пользователя нет ID или email, значит что-то пошло не так
+                        if (tempUser.getId() == null || tempUser.getEmail() == null) {
+                            // Создаем пользователя вручную с минимальными данными
+                            Log.w(TAG, "Creating manual user object");
+                            final User manualUser = new User() {
+                                @Override
+                                public String getId() {
+                                    return userId;
+                                }
+                                
+                                @Override
+                                public String getEmail() {
+                                    return "user@example.com";
+                                }
+                                
+                                @Override
+                                public String getName() {
+                                    return newUsername;
+                                }
+                            };
+                            callback.onSuccess(manualUser);
+                        } else {
+                            callback.onSuccess(tempUser);
+                        }
+                    } else {
+                        String errorMessage = parseErrorMessage(responseBody, response.code());
+                        callback.onError("Profile update failed: " + errorMessage);
+                    }
+                }
+            } catch (UnknownHostException e) {
+                Log.e(TAG, "Network error during profile update: Unknown host", e);
+                callback.onError("Network error: Не удалось подключиться к серверу. Проверьте интернет-соединение.");
+            } catch (SocketTimeoutException e) {
+                Log.e(TAG, "Network timeout during profile update", e);
+                callback.onError("Network error: Сервер не отвечает. Попробуйте позже.");
+            } catch (IOException e) {
+                Log.e(TAG, "Error during profile update", e);
+                callback.onError("Network error: " + e.getMessage());
+            } catch (Exception e) {
+                Log.e(TAG, "Unexpected error during profile update", e);
+                callback.onError("Unexpected error: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Интерфейс для обратного вызова обновления профиля
+     */
+    public interface ProfileUpdateCallback {
+        void onSuccess(User updatedUser);
+        void onError(String errorMessage);
+    }
+
+    /**
+     * Модель ответа аутентификации от Supabase
+     */
+    public static class AuthResponse {
+        @SerializedName("access_token")
+        private String accessToken;
+        
+        @SerializedName("refresh_token")
+        private String refreshToken;
+        
+        @SerializedName("user")
+        private User user;
+        
+        public String getAccessToken() {
+            return accessToken;
+        }
+        
+        public String getRefreshToken() {
+            return refreshToken;
+        }
+        
+        public User getUser() {
+            return user;
+        }
+    }
+    
+    /**
+     * Модель данных пользователя
+     */
+    public static class User {
+        @SerializedName("id")
+        private String id;
+        
+        @SerializedName("email")
+        private String email;
+        
+        // Свойство для имени пользователя (может быть в метаданных)
+        @SerializedName("user_metadata")
+        private JsonObject metadata;
+        
+        @SerializedName("updated_at")
+        private String updatedAt;
+        
+        public String getId() {
+            return id;
+        }
+        
+        public String getEmail() {
+            return email;
+        }
+        
+        public String getName() {
+            try {
+                // Проверяем наличие метаданных и имени в них
+                if (metadata != null && metadata.has("name") && !metadata.get("name").isJsonNull()) {
+                    return metadata.get("name").getAsString();
+                }
+                
+                // Запасной вариант - берем часть email до @
+                if (email != null && email.contains("@")) {
+                    return email.split("@")[0];
+                }
+            } catch (Exception e) {
+                Log.e("SupabaseClient", "Error getting user name from metadata: " + e.getMessage());
+            }
+            
+            return email != null ? email.split("@")[0] : "User";
+        }
+        
+        // Метод для отладки - выводит все метаданные пользователя
+        public String getMetadataDebug() {
+            if (metadata != null) {
+                return metadata.toString();
+            }
+            return "No metadata";
+        }
+        
+        public String getAvatarUrl() {
+            try {
+                // Проверяем наличие метаданных и URL аватарки в них
+                if (metadata != null && metadata.has("avatar_url") && !metadata.get("avatar_url").isJsonNull()) {
+                    return metadata.get("avatar_url").getAsString();
+                }
+            } catch (Exception e) {
+                Log.e("SupabaseClient", "Error getting avatar URL from metadata: " + e.getMessage());
+            }
+            
+            return null;
+        }
+    }
+
+    /**
+     * Извлекает более подробное сообщение об ошибке из ответа сервера
+     */
+    private String parseErrorMessage(String responseBody, int statusCode) {
+        // Если тело ответа пустое, возвращаем код статуса
+        if (responseBody == null || responseBody.isEmpty()) {
+            return "HTTP error " + statusCode;
+        }
+        
+        try {
+            // Пытаемся парсить JSON
+            JsonElement element = JsonParser.parseString(responseBody);
+            if (element.isJsonObject()) {
+                JsonObject jsonObject = element.getAsJsonObject();
+                
+                // Проверяем различные поля с сообщением об ошибке
+                if (jsonObject.has("error")) {
+                    JsonElement error = jsonObject.get("error");
+                    if (error.isJsonPrimitive()) {
+                        return error.getAsString();
+                    } else if (error.isJsonObject()) {
+                        JsonObject errorObj = error.getAsJsonObject();
+                        if (errorObj.has("message")) {
+                            return errorObj.get("message").getAsString();
+                        }
+                    }
+                }
+                
+                if (jsonObject.has("error_description")) {
+                    return jsonObject.get("error_description").getAsString();
+                }
+                
+                if (jsonObject.has("message")) {
+                    return jsonObject.get("message").getAsString();
+                }
+                
+                if (jsonObject.has("msg")) {
+                    return jsonObject.get("msg").getAsString();
+                }
+            }
+            
+            // Если не удалось извлечь сообщение, возвращаем сам JSON
+            return responseBody;
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing error response", e);
+            // Если не удалось распарсить JSON, возвращаем статус-код и тело ответа
+            return "HTTP error " + statusCode + ": " + responseBody;
+        }
+    }
+
+    /**
+     * Интерфейс для обратного вызова добавления альбома
+     */
+    public interface ReleaseCallback {
+        void onSuccess(Release release);
+        void onError(String errorMessage);
+    }
+    
+    /**
+     * Интерфейс для обратного вызова получения списка альбомов
+     */
+    public interface ReleasesListCallback {
+        void onSuccess(List<Release> releases);
+        void onError(String errorMessage);
+    }
+
+    /**
+     * Получает список альбомов пользователя из Supabase
+     * 
+     * @param userId ID пользователя
+     * @param token токен доступа
+     * @param callback обратный вызов с результатом операции
+     */
+    public void getUserReleases(String userId, String token, ReleasesListCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Формируем запрос
+                String apiUrl = supabaseUrl + "/rest/v1/releases?user_id=eq." + userId + "&order=created_at.desc";
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .addHeader("Content-Type", "application/json")
+                        .get()
+                        .build();
+                
+                // Отправляем запрос
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful() && !responseBody.isEmpty()) {
+                    // Парсим ответ
+                    Type listType = new TypeToken<List<Release>>(){}.getType();
+                    List<Release> releases = gson.fromJson(responseBody, listType);
+                    
+                    if (releases != null) {
+                        callback.onSuccess(releases);
+                    } else {
+                        callback.onError("Error parsing releases data");
+                    }
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    callback.onError("Failed to load releases: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading releases", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Загружает изображение обложки альбома в Supabase Storage
+     * и создает запись об альбоме в базе данных
+     * 
+     * @param title название альбома
+     * @param artist исполнитель
+     * @param releaseDate дата выпуска
+     * @param coverUri URI изображения обложки
+     * @param context контекст для доступа к файлам
+     * @param userId ID пользователя, добавляющего альбом
+     * @param token токен доступа пользователя
+     * @param callback обратный вызов с результатом операции
+     */
+    public void addRelease(String title, String artist, String releaseDate, 
+                          Uri coverUri, Context context, String userId, 
+                          String token, ReleaseCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Сначала загружаем изображение
+                String coverUrl = uploadImage(coverUri, context, token);
+                
+                if (coverUrl == null) {
+                    callback.onError("Failed to upload image");
+                    return;
+                }
+                
+                // Затем создаем запись об альбоме
+                createReleaseRecord(title, artist, releaseDate, coverUrl, userId, token, callback);
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error during release addition", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Загружает изображение в Supabase Storage
+     * 
+     * @param imageUri URI изображения
+     * @param context контекст для доступа к файлам
+     * @param token токен доступа
+     * @return URL загруженного изображения или null в случае ошибки
+     */
+    private String uploadImage(Uri imageUri, Context context, String token) {
+        try {
+            // Получаем файл из URI
+            InputStream inputStream = context.getContentResolver().openInputStream(imageUri);
+            if (inputStream == null) {
+                Log.e(TAG, "Cannot open input stream for image: " + imageUri);
+                return null;
+            }
+            
+            // Получаем имя файла
+            String fileName = "cover_" + System.currentTimeMillis() + ".jpg";
+            
+            // Читаем изображение в байтовый массив
+            byte[] imageData = readBytes(inputStream);
+            inputStream.close();
+            
+            // Создаем запрос для загрузки файла
+            String storageUrl = supabaseUrl + "/storage/v1/object/covers/" + fileName;
+            
+            RequestBody requestBody = RequestBody.create(imageData, MediaType.parse("image/jpeg"));
+            
+            Request request = new Request.Builder()
+                    .url(storageUrl)
+                    .addHeader("apikey", supabaseKey)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .addHeader("Content-Type", "image/jpeg")
+                    .post(requestBody)
+                    .build();
+            
+            // Отправляем запрос
+            Response response = client.newCall(request).execute();
+            
+            if (!response.isSuccessful()) {
+                Log.e(TAG, "Failed to upload image: " + response.code() + " - " + 
+                      (response.body() != null ? response.body().string() : "No response body"));
+                return null;
+            }
+            
+            // Возвращаем URL загруженного изображения
+            return supabaseUrl + "/storage/v1/object/covers/" + fileName;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error uploading image", e);
+            return null;
+        }
+    }
+    
+    /**
+     * Читает данные из InputStream в байтовый массив
+     */
+    private byte[] readBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
+        int bufferSize = 1024;
+        byte[] buffer = new byte[bufferSize];
+        
+        int len;
+        while ((len = inputStream.read(buffer)) != -1) {
+            byteBuffer.write(buffer, 0, len);
+        }
+        
+        return byteBuffer.toByteArray();
+    }
+    
+    /**
+     * Создает запись об альбоме в базе данных
+     */
+    private void createReleaseRecord(String title, String artist, String releaseDate, 
+                                   String coverUrl, String userId, String token, 
+                                   ReleaseCallback callback) {
+        try {
+            // Создаем JSON с данными альбома
+            JsonObject releaseJson = new JsonObject();
+            releaseJson.addProperty("title", title);
+            releaseJson.addProperty("artist", artist);
+            releaseJson.addProperty("release_date", releaseDate);
+            releaseJson.addProperty("cover_url", coverUrl);
+            releaseJson.addProperty("user_id", userId);
+            
+            // Формируем запрос
+            String apiUrl = supabaseUrl + "/rest/v1/releases";
+            
+            RequestBody requestBody = RequestBody.create(releaseJson.toString(), JSON);
+            
+            Request request = new Request.Builder()
+                    .url(apiUrl)
+                    .addHeader("apikey", supabaseKey)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Prefer", "return=representation")
+                    .post(requestBody)
+                    .build();
+            
+            // Отправляем запрос
+            Response response = client.newCall(request).execute();
+            
+            String responseBody = response.body() != null ? response.body().string() : "";
+            
+            if (response.isSuccessful() && !responseBody.isEmpty()) {
+                // Парсим ответ
+                // Проверяем, является ли ответ массивом
+                if (responseBody.startsWith("[")) {
+                    // Если это массив, извлекаем первый элемент
+                    Type listType = new TypeToken<List<Release>>(){}.getType();
+                    List<Release> releases = gson.fromJson(responseBody, listType);
+                    if (releases != null && !releases.isEmpty()) {
+                        callback.onSuccess(releases.get(0));
+                    } else {
+                        callback.onError("Empty release data received");
+                    }
+                } else {
+                    // Если это не массив, обрабатываем как раньше
+                    Release release = gson.fromJson(responseBody, Release.class);
+                    callback.onSuccess(release);
+                }
+            } else {
+                String errorMessage = parseErrorMessage(responseBody, response.code());
+                callback.onError("Failed to create release record: " + errorMessage);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating release record", e);
+            callback.onError("Error: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Модель данных альбома
+     */
+    public static class Release {
+        @SerializedName("id")
+        private int id;
+        
+        @SerializedName("title")
+        private String title;
+        
+        @SerializedName("artist")
+        private String artist;
+        
+        @SerializedName("release_date")
+        private String releaseDate;
+        
+        @SerializedName("cover_url")
+        private String coverUrl;
+        
+        @SerializedName("user_id")
+        private String userId;
+        
+        @SerializedName("created_at")
+        private String createdAt;
+        
+        public int getId() {
+            return id;
+        }
+        
+        public String getTitle() {
+            return title;
+        }
+        
+        public String getArtist() {
+            return artist;
+        }
+        
+        public String getReleaseDate() {
+            return releaseDate;
+        }
+        
+        public String getCoverUrl() {
+            return coverUrl;
+        }
+        
+        public String getUserId() {
+            return userId;
+        }
+        
+        public String getCreatedAt() {
+            return createdAt;
+        }
+    }
+
+    /**
+     * Обновляет аватарку пользователя
+     * 
+     * @param userId ID пользователя
+     * @param avatarUri URI изображения аватарки
+     * @param context контекст для доступа к файлам
+     * @param token токен доступа
+     * @param callback обратный вызов с результатом операции
+     */
+    public void updateUserAvatar(String userId, Uri avatarUri, Context context, String token, ProfileUpdateCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Проверяем, существует ли бакет 'avatars', если нет - нужно создать его в панели Supabase
+                
+                // Загружаем изображение в хранилище Supabase
+                String fileName = "avatar_" + userId + "_" + System.currentTimeMillis() + ".jpg";
+                String avatarUrl = uploadImageToStorage(avatarUri, context, token, "avatars", fileName);
+                
+                if (avatarUrl == null) {
+                    callback.onError("Failed to upload avatar image");
+                    return;
+                }
+                
+                // Обновляем метаданные пользователя с ссылкой на аватарку
+                JsonObject userMetadata = new JsonObject();
+                // Сохраняем текущее имя пользователя, если оно есть
+                String currentName = getUserNameFromToken(token);
+                if (currentName != null && !currentName.isEmpty()) {
+                    userMetadata.addProperty("name", currentName);
+                }
+                userMetadata.addProperty("avatar_url", avatarUrl);
+                
+                JsonObject requestJson = new JsonObject();
+                requestJson.add("data", userMetadata);
+
+                // Создаем запрос к Supabase API
+                Request request = new Request.Builder()
+                        .url(supabaseUrl + "/auth/v1/user")
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .addHeader("Content-Type", "application/json")
+                        .put(RequestBody.create(requestJson.toString(), JSON))
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    String responseBody = response.body() != null ? response.body().string() : "";
+                    
+                    if (response.isSuccessful() && !responseBody.isEmpty()) {
+                        // Парсим ответ и извлекаем обновленные данные пользователя
+                        User updatedUser = gson.fromJson(responseBody, User.class);
+                        
+                        // Если ответ успешный, но данные пользователя не получены
+                        if (updatedUser == null) {
+                            User tempUser = new User() {
+                                @Override
+                                public String getId() {
+                                    return userId;
+                                }
+                                
+                                @Override
+                                public String getAvatarUrl() {
+                                    return avatarUrl;
+                                }
+                            };
+                            callback.onSuccess(tempUser);
+                        } else {
+                            // Если метаданные не содержат avatar_url, добавляем его вручную
+                            if (updatedUser.getAvatarUrl() == null) {
+                                try {
+                                    if (updatedUser.metadata == null) {
+                                        updatedUser.metadata = new JsonObject();
+                                    }
+                                    updatedUser.metadata.addProperty("avatar_url", avatarUrl);
+                                } catch (Exception e) {
+                                    Log.e(TAG, "Error updating avatar_url in metadata", e);
+                                }
+                            }
+                            
+                            callback.onSuccess(updatedUser);
+                        }
+                    } else {
+                        String errorMessage = parseErrorMessage(responseBody, response.code());
+                        callback.onError("Avatar update failed: " + errorMessage);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating avatar", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Загружает изображение в указанный бакет Supabase Storage
+     * 
+     * @param imageUri URI изображения
+     * @param context контекст для доступа к файлам
+     * @param token токен доступа
+     * @param bucket название бакета
+     * @param fileName имя файла
+     * @return URL загруженного изображения или null в случае ошибки
+     */
+    private String uploadImageToStorage(Uri imageUri, Context context, String token, String bucket, String fileName) {
+        try {
+            // Получаем файл из URI
+            InputStream inputStream = context.getContentResolver().openInputStream(imageUri);
+            if (inputStream == null) {
+                Log.e(TAG, "Cannot open input stream for image: " + imageUri);
+                return null;
+            }
+            
+            // Читаем изображение в байтовый массив
+            byte[] imageData = readBytes(inputStream);
+            inputStream.close();
+            
+            // Создаем запрос для загрузки файла
+            String storageUrl = supabaseUrl + "/storage/v1/object/" + bucket + "/" + fileName;
+            
+            RequestBody requestBody = RequestBody.create(imageData, MediaType.parse("image/jpeg"));
+            
+            Request request = new Request.Builder()
+                    .url(storageUrl)
+                    .addHeader("apikey", supabaseKey)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .addHeader("Content-Type", "image/jpeg")
+                    .post(requestBody)
+                    .build();
+            
+            // Отправляем запрос
+            Response response = client.newCall(request).execute();
+            
+            if (!response.isSuccessful()) {
+                Log.e(TAG, "Failed to upload image: " + response.code() + " - " + 
+                      (response.body() != null ? response.body().string() : "No response body"));
+                return null;
+            }
+            
+            // Возвращаем URL загруженного изображения
+            return supabaseUrl + "/storage/v1/object/" + bucket + "/" + fileName;
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error uploading image", e);
+            return null;
+        }
+    }
+
+    /**
+     * Извлекает имя пользователя из JWT токена
+     */
+    private String getUserNameFromToken(String token) {
+        try {
+            // JWT состоит из трех частей, разделенных точкой
+            String[] parts = token.split("\\.");
+            if (parts.length < 2) {
+                return null;
+            }
+            
+            // Декодируем payload (вторую часть токена)
+            String payload = new String(android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE));
+            JsonObject jsonPayload = JsonParser.parseString(payload).getAsJsonObject();
+            
+            // Проверяем наличие метаданных пользователя в токене
+            if (jsonPayload.has("user_metadata") && !jsonPayload.get("user_metadata").isJsonNull()) {
+                JsonObject userMetadata = jsonPayload.getAsJsonObject("user_metadata");
+                if (userMetadata.has("name") && !userMetadata.get("name").isJsonNull()) {
+                    return userMetadata.get("name").getAsString();
+                }
+            }
+            
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "Error extracting name from token", e);
+            return null;
+        }
+    }
+}

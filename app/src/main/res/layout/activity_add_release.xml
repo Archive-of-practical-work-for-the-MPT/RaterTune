@@ -22,7 +22,7 @@
                 android:id="@+id/backButton"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
+                android:background="@drawable/ripple_circle_background"
                 android:src="@drawable/ic_back"
                 android:tint="@color/text_primary" />
 
@@ -32,8 +32,8 @@
                 android:layout_gravity="center"
                 android:text="Добавить альбом"
                 android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:textSize="20sp"
+                android:fontFamily="sans-serif-medium" />
 
         </androidx.appcompat.widget.Toolbar>
 
@@ -48,29 +48,31 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="16dp">
+            android:padding="24dp">
 
             <!-- Загрузка обложки -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/coverCard"
                 android:layout_width="200dp"
                 android:layout_height="200dp"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="24dp"
                 app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp">
+                app:cardCornerRadius="24dp"
+                app:cardElevation="2dp"
+                app:strokeColor="@color/transparent_white"
+                app:strokeWidth="0.5dp">
 
                 <ImageView
                     android:id="@+id/coverImage"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
-                    android:src="@drawable/ic_profile" />
+                    android:src="@drawable/ic_album_placeholder" />
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/uploadButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -78,7 +80,11 @@
                 android:layout_marginBottom="24dp"
                 android:backgroundTint="@color/accent"
                 android:text="Загрузить обложку"
-                android:textColor="@color/text_primary" />
+                android:textColor="@color/text_primary"
+                app:cornerRadius="16dp"
+                app:rippleColor="@color/accent_light"
+                android:paddingVertical="12dp"
+                android:fontFamily="sans-serif-medium" />
 
             <!-- Название альбома -->
             <com.google.android.material.textfield.TextInputLayout
@@ -86,19 +92,15 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:hint="Название альбома"
-                app:boxBackgroundColor="@color/card_background"
-                app:boxCornerRadiusBottomEnd="16dp"
-                app:boxCornerRadiusBottomStart="16dp"
-                app:boxCornerRadiusTopEnd="16dp"
-                app:boxCornerRadiusTopStart="16dp"
-                app:hintTextColor="@color/text_secondary">
+                style="@style/MinimalistTextInputLayout">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/albumTitleInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="text"
-                    android:textColor="@color/text_primary" />
+                    android:textColor="@color/text_primary"
+                    android:fontFamily="sans-serif-medium" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -108,19 +110,15 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:hint="Исполнитель"
-                app:boxBackgroundColor="@color/card_background"
-                app:boxCornerRadiusBottomEnd="16dp"
-                app:boxCornerRadiusBottomStart="16dp"
-                app:boxCornerRadiusTopEnd="16dp"
-                app:boxCornerRadiusTopStart="16dp"
-                app:hintTextColor="@color/text_secondary">
+                style="@style/MinimalistTextInputLayout">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/artistInput"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:inputType="text"
-                    android:textColor="@color/text_primary" />
+                    android:textColor="@color/text_primary"
+                    android:fontFamily="sans-serif-medium" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -130,12 +128,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
                 android:hint="Дата выпуска"
-                app:boxBackgroundColor="@color/card_background"
-                app:boxCornerRadiusBottomEnd="16dp"
-                app:boxCornerRadiusBottomStart="16dp"
-                app:boxCornerRadiusTopEnd="16dp"
-                app:boxCornerRadiusTopStart="16dp"
-                app:hintTextColor="@color/text_secondary">
+                style="@style/MinimalistTextInputLayout">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/releaseDateInput"
@@ -143,21 +136,49 @@
                     android:layout_height="wrap_content"
                     android:focusable="false"
                     android:inputType="none"
-                    android:textColor="@color/text_primary" />
+                    android:textColor="@color/text_primary"
+                    android:fontFamily="sans-serif-medium" />
 
             </com.google.android.material.textfield.TextInputLayout>
 
             <!-- Кнопка сохранения -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/saveButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:backgroundTint="@color/accent"
                 android:text="Сохранить"
-                android:textColor="@color/text_primary" />
+                android:textColor="@color/text_primary"
+                app:cornerRadius="16dp"
+                app:rippleColor="@color/accent_light"
+                android:paddingVertical="14dp"
+                android:fontFamily="sans-serif-medium"
+                android:textSize="16sp" />
 
         </LinearLayout>
 
     </androidx.core.widget.NestedScrollView>
+    
+    <!-- Индикатор загрузки -->
+    <FrameLayout
+        android:id="@+id/addReleaseProgressOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0.7"
+        android:background="@color/transparent_black"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            app:indicatorColor="@color/accent"
+            app:indicatorSize="60dp"
+            app:trackColor="@color/transparent_white"
+            app:trackThickness="5dp"
+            android:indeterminate="true" />
+    </FrameLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout> 

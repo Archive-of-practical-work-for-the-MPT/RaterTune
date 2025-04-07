@@ -87,14 +87,15 @@
 
             </LinearLayout>
 
-            <androidx.viewpager2.widget.ViewPager2
-                android:id="@+id/releasesPager"
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/releasesRecyclerView"
                 android:layout_width="match_parent"
-                android:layout_height="200dp"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="24dp"
                 android:clipToPadding="false"
-                android:paddingStart="40dp"
-                android:paddingEnd="40dp" />
+                android:nestedScrollingEnabled="false"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp" />
 
             <!-- Новые рецензии -->
             <TextView

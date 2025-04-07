@@ -15,6 +15,7 @@ public class SessionManager {
     private static final String KEY_ACCESS_TOKEN = "accessToken";
     private static final String KEY_REFRESH_TOKEN = "refreshToken";
     private static final String KEY_IS_LOGGED_IN = "isLoggedIn";
+    private static final String KEY_USER_AVATAR_URL = "userAvatarUrl";
 
     private final SharedPreferences sharedPreferences;
     private final SharedPreferences.Editor editor;
@@ -66,6 +67,14 @@ public class SessionManager {
     }
 
     /**
+     * Обновляет имя пользователя
+     */
+    public void updateUserName(String newName) {
+        editor.putString(KEY_USER_NAME, newName);
+        editor.commit();
+    }
+
+    /**
      * Получает токен доступа
      */
     public String getAccessToken() {
@@ -77,6 +86,21 @@ public class SessionManager {
      */
     public String getRefreshToken() {
         return sharedPreferences.getString(KEY_REFRESH_TOKEN, null);
+    }
+
+    /**
+     * Получает URL аватарки пользователя
+     */
+    public String getUserAvatarUrl() {
+        return sharedPreferences.getString(KEY_USER_AVATAR_URL, null);
+    }
+
+    /**
+     * Обновляет URL аватарки пользователя
+     */
+    public void updateUserAvatarUrl(String avatarUrl) {
+        editor.putString(KEY_USER_AVATAR_URL, avatarUrl);
+        editor.commit();
     }
 
     /**

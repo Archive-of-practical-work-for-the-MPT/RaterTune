@@ -2,8 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
-// Загрузка переменных окружения из .env файла
-def envFile = new File(rootProject.projectDir, '.env')
+// Загрузка переменных окружения из .env.properties файла
+def envFile = new File(rootProject.projectDir, 'app/src/main/assets/.env.properties')
 def env = [:]
 if (envFile.exists()) {
     envFile.eachLine { line ->
@@ -13,7 +13,7 @@ if (envFile.exists()) {
         }
     }
 } else {
-    System.err.println 'Warning: .env file not found. Please create it and add your Supabase credentials.'
+    System.err.println 'Warning: .env.properties file not found in assets folder. Please create it and add your Supabase credentials.'
 }
 
 android {

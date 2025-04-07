@@ -7,11 +7,15 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.example.ratertune.utils.SessionManager;
+import com.example.ratertune.utils.Config;
+import com.example.ratertune.api.SupabaseClient;
 
 public class AuthActivity extends AppCompatActivity {
     private TextInputLayout emailLayout, passwordLayout;
@@ -20,12 +24,14 @@ public class AuthActivity extends AppCompatActivity {
     private TextView registerButton, authTitleText, promptText;
     private boolean isLoginMode = true;
     private SessionManager sessionManager;
+    private View progressOverlay;
+    private View rootView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Инициализируем Config для загрузки переменных из .env
+        // Инициализируем Config для загрузки переменных из .env.properties
         Config.init(this);
         
         sessionManager = new SessionManager(this);
@@ -41,6 +47,7 @@ public class AuthActivity extends AppCompatActivity {
         setContentView(R.layout.activity_auth);
 
         // Инициализация элементов UI
+        rootView = findViewById(android.R.id.content);
         emailLayout = findViewById(R.id.emailLayout);
         passwordLayout = findViewById(R.id.passwordLayout);
         emailInput = (TextInputEditText) emailLayout.getEditText();
@@ -49,6 +56,7 @@ public class AuthActivity extends AppCompatActivity {
         registerButton = findViewById(R.id.registerButton);
         authTitleText = findViewById(R.id.authTitleText);
         promptText = findViewById(R.id.promptText);
+        progressOverlay = findViewById(R.id.progressOverlay);
 
         // Устанавливаем обработчики событий
         loginButton.setOnClickListener(v -> handleAuth());
@@ -60,13 +68,13 @@ public class AuthActivity extends AppCompatActivity {
         if (isLoginMode) {
             authTitleText.setText(R.string.login_title);
             loginButton.setText(R.string.login_button);
-            promptText.setText(R.string.no_account);
             registerButton.setText(R.string.register_link);
+            promptText.setText(R.string.no_account);
         } else {
             authTitleText.setText(R.string.register_title);
             loginButton.setText(R.string.register_button);
-            promptText.setText(R.string.have_account);
             registerButton.setText(R.string.login_link);
+            promptText.setText(R.string.have_account);
         }
     }
 
@@ -74,86 +82,146 @@ public class AuthActivity extends AppCompatActivity {
         String email = emailInput.getText().toString().trim();
         String password = passwordInput.getText().toString().trim();
 
-        // Валидация полей
-        boolean isValid = true;
-
+        // Проверка введенных данных
         if (TextUtils.isEmpty(email)) {
             emailLayout.setError(getString(R.string.error_empty_email));
-            isValid = false;
-        } else {
-            emailLayout.setError(null);
+            return;
         }
+        emailLayout.setError(null);
 
         if (TextUtils.isEmpty(password)) {
             passwordLayout.setError(getString(R.string.error_empty_password));
-            isValid = false;
-        } else if (password.length() < 6) {
-            passwordLayout.setError(getString(R.string.error_short_password));
-            isValid = false;
-        } else {
-            passwordLayout.setError(null);
-        }
-
-        if (!isValid) {
             return;
         }
+        if (password.length() < 6) {
+            passwordLayout.setError(getString(R.string.error_short_password));
+            return;
+        }
+        passwordLayout.setError(null);
 
-        // Показываем прогресс
-        showProgress(true);
-
+        // Показываем индикатор загрузки
+        showLoading(true);
+        
+        // Реализация авторизации через Supabase
         if (isLoginMode) {
-            // Вход
+            // Выполняем вход
             SupabaseClient.getInstance().signIn(email, password, new SupabaseClient.AuthCallback() {
                 @Override
-                public void onSuccess() {
-                    showProgress(false);
-                    sessionManager.createLoginSession("user123", email, "User Name", "access_token", "refresh_token");
-                    navigateToMain();
+                public void onSuccess(SupabaseClient.AuthResponse response) {
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        // Сохраняем данные сессии
+                        sessionManager.createLoginSession(
+                            response.getUser().getId(),
+                            response.getUser().getEmail(),
+                            response.getUser().getName(),
+                            response.getAccessToken(),
+                            response.getRefreshToken()
+                        );
+                        // Переходим на главный экран
+                        startActivity(new Intent(AuthActivity.this, MainActivity.class));
+                        finish();
+                    });
                 }
 
                 @Override
                 public void onError(String errorMessage) {
-                    showProgress(false);
-                    showToast(getString(R.string.login_error, errorMessage));
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        showAuthError(errorMessage, true);
+                    });
                 }
             });
         } else {
-            // Регистрация
+            // Выполняем регистрацию
             SupabaseClient.getInstance().signUp(email, password, new SupabaseClient.AuthCallback() {
                 @Override
-                public void onSuccess() {
-                    showProgress(false);
-                    showToast(getString(R.string.registration_success));
-                    isLoginMode = true;
-                    authTitleText.setText(R.string.login_title);
-                    loginButton.setText(R.string.login_button);
-                    promptText.setText(R.string.no_account);
-                    registerButton.setText(R.string.register_link);
+                public void onSuccess(SupabaseClient.AuthResponse response) {
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        showRegistrationSuccess();
+                        // После успешной регистрации переключаемся на экран входа
+                        isLoginMode = true;
+                        authTitleText.setText(R.string.login_title);
+                        loginButton.setText(R.string.login_button);
+                        registerButton.setText(R.string.register_link);
+                        promptText.setText(R.string.no_account);
+                    });
                 }
 
                 @Override
                 public void onError(String errorMessage) {
-                    showProgress(false);
-                    showToast(getString(R.string.register_error, errorMessage));
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        showAuthError(errorMessage, false);
+                    });
                 }
             });
         }
     }
-
-    private void showProgress(boolean show) {
-        loginButton.setEnabled(!show);
-        registerButton.setEnabled(!show);
+    
+    /**
+     * Показывает сообщение об ошибке авторизации с пользовательски понятным описанием
+     * @param errorMessage Техническое сообщение об ошибке
+     * @param isLogin Флаг, указывающий, произошла ли ошибка при входе или регистрации
+     */
+    private void showAuthError(String errorMessage, boolean isLogin) {
+        String userFriendlyMessage;
         
-        // Здесь можно добавить анимацию загрузки, если нужно
+        // Анализируем сообщение об ошибке и формируем понятное пользователю сообщение
+        if (errorMessage.contains("Configuration error")) {
+            userFriendlyMessage = "Не удалось подключиться к серверу. Пожалуйста, сообщите разработчикам об этой проблеме.";
+        } 
+        else if (errorMessage.contains("Network error") || errorMessage.contains("timeout")) {
+            userFriendlyMessage = "Проверьте подключение к интернету и попробуйте снова.";
+        }
+        else if (errorMessage.contains("invalid_grant") || errorMessage.contains("Invalid login")) {
+            userFriendlyMessage = "Неверный email или пароль. Попробуйте снова.";
+        }
+        else if (errorMessage.contains("User already registered")) {
+            userFriendlyMessage = "Пользователь с таким email уже зарегистрирован. Попробуйте войти.";
+        }
+        else if (errorMessage.contains("Invalid email")) {
+            userFriendlyMessage = "Указан неверный формат email. Проверьте и попробуйте снова.";
+        }
+        else if (errorMessage.contains("weak password")) {
+            userFriendlyMessage = "Пароль слишком простой. Используйте комбинацию букв, цифр и специальных символов.";
+        }
+        else {
+            // Общее сообщение, если не удалось определить конкретную причину
+            userFriendlyMessage = isLogin 
+                ? "Не удалось войти в аккаунт. Пожалуйста, проверьте введенные данные и попробуйте снова." 
+                : "Не удалось создать аккаунт. Пожалуйста, попробуйте позже или используйте другой email.";
+        }
+        
+        // Создаем диалоговое окно с ошибкой
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle(isLogin ? "Ошибка входа" : "Ошибка регистрации")
+               .setMessage(userFriendlyMessage)
+               .setPositiveButton("Понятно", null)
+               .show();
     }
-
-    private void navigateToMain() {
-        Intent intent = new Intent(this, MainActivity.class);
-        startActivity(intent);
-        finish();
+    
+    /**
+     * Показывает сообщение об успешной регистрации
+     */
+    private void showRegistrationSuccess() {
+        Snackbar.make(rootView, "Регистрация успешна! Теперь вы можете войти, используя созданный аккаунт.", 
+                     Snackbar.LENGTH_LONG)
+                .setBackgroundTint(getResources().getColor(R.color.accent_dark, null))
+                .setTextColor(getResources().getColor(R.color.text_primary, null))
+                .show();
     }
-
-    private void showToast(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+    
+    /**
+     * Показывает или скрывает индикатор загрузки
+     */
+    private void showLoading(boolean isLoading) {
+        if (progressOverlay != null) {
+            progressOverlay.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        // Блокируем кнопки во время загрузки
+        loginButton.setEnabled(!isLoading);
+        registerButton.setEnabled(!isLoading);
     }
 } 

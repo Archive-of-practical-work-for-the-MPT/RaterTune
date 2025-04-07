@@ -6,9 +6,9 @@
         <item name="boxCornerRadiusBottomStart">16dp</item>
         <item name="boxCornerRadiusBottomEnd">16dp</item>
         <item name="boxStrokeWidth">1dp</item>
-        <item name="boxStrokeColor">@android:color/white</item>
-        <item name="hintTextColor">#9E9E9E</item>
-        <item name="android:textColorHint">#9E9E9E</item>
+        <item name="boxStrokeColor">@color/accent</item>
+        <item name="hintTextColor">@color/accent</item>
+        <item name="android:textColorHint">@color/text_secondary</item>
         <item name="boxBackgroundColor">#1A1A1A</item>
         <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.App.TextInputLayout</item>
     </style>
@@ -18,13 +18,13 @@
         <item name="cornerSize">16dp</item>
     </style>
 
-    <style name="MinimalistButton" parent="Widget.MaterialComponents.Button.UnelevatedButton">
-        <item name="cornerRadius">12dp</item>
+    <style name="MinimalistButton" parent="Widget.MaterialComponents.Button">
+        <item name="cornerRadius">16dp</item>
+        <item name="android:paddingTop">12dp</item>
+        <item name="android:paddingBottom">12dp</item>
         <item name="android:textSize">16sp</item>
-        <item name="android:letterSpacing">0.0</item>
-        <item name="android:textStyle">normal</item>
-        <item name="android:padding">14dp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="rippleColor">@color/accent_light</item>
     </style>
     
     <style name="OutlinedMinimalistButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
@@ -36,5 +36,11 @@
         <item name="android:fontFamily">sans-serif-medium</item>
         <item name="strokeColor">#6D6D6D</item>
         <item name="strokeWidth">1dp</item>
+    </style>
+
+    <!-- Стиль для круглого изображения профиля -->
+    <style name="CircleImage">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
     </style>
 </resources> 

@@ -15,11 +15,17 @@ import com.squareup.picasso.Picasso;
 
 import java.util.List;
 
-public class ReleasesPagerAdapter extends RecyclerView.Adapter<ReleasesPagerAdapter.ReleaseViewHolder> {
+public class ReleasesAdapter extends RecyclerView.Adapter<ReleasesAdapter.ReleaseViewHolder> {
     private List<Release> releases;
+    private OnReleaseClickListener listener;
 
-    public ReleasesPagerAdapter(List<Release> releases) {
+    public interface OnReleaseClickListener {
+        void onReleaseClick(Release release);
+    }
+
+    public ReleasesAdapter(List<Release> releases, OnReleaseClickListener listener) {
         this.releases = releases;
+        this.listener = listener;
     }
 
     @NonNull
@@ -33,19 +39,7 @@ public class ReleasesPagerAdapter extends RecyclerView.Adapter<ReleasesPagerAdap
     @Override
     public void onBindViewHolder(@NonNull ReleaseViewHolder holder, int position) {
         Release release = releases.get(position);
-        holder.titleTextView.setText(release.getTitle());
-        holder.artistTextView.setText(release.getArtist());
-        
-        // Показываем рейтинг, если он установлен
-        float rating = release.getRating();
-        holder.ratingTextView.setText(String.format("%.1f", rating));
-
-        // Загрузка изображения с помощью Picasso
-        Picasso.get()
-                .load(release.getImageUrl())
-                .placeholder(R.drawable.ic_album_placeholder)
-                .error(R.drawable.ic_album_placeholder)
-                .into(holder.imageView);
+        holder.bind(release, listener);
     }
 
     @Override
@@ -65,6 +59,29 @@ public class ReleasesPagerAdapter extends RecyclerView.Adapter<ReleasesPagerAdap
             titleTextView = itemView.findViewById(R.id.releaseTitle);
             artistTextView = itemView.findViewById(R.id.releaseArtist);
             ratingTextView = itemView.findViewById(R.id.releaseRating);
+        }
+
+        void bind(final Release release, final OnReleaseClickListener listener) {
+            titleTextView.setText(release.getTitle());
+            artistTextView.setText(release.getArtist());
+            
+            // Показываем рейтинг, если он установлен
+            float rating = release.getRating();
+            ratingTextView.setText(String.format("%.1f", rating));
+
+            // Загрузка изображения с помощью Picasso
+            Picasso.get()
+                    .load(release.getImageUrl())
+                    .placeholder(R.drawable.ic_album_placeholder)
+                    .error(R.drawable.ic_album_placeholder)
+                    .into(imageView);
+                    
+            // Обработка клика на элемент
+            itemView.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onReleaseClick(release);
+                }
+            });
         }
     }
 } 
