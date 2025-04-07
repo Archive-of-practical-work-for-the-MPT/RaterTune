@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="MinimalistTextInputLayout" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">16dp</item>
+        <item name="boxCornerRadiusTopEnd">16dp</item>
+        <item name="boxCornerRadiusBottomStart">16dp</item>
+        <item name="boxCornerRadiusBottomEnd">16dp</item>
+        <item name="boxStrokeWidth">1dp</item>
+        <item name="boxStrokeColor">@android:color/white</item>
+        <item name="hintTextColor">#9E9E9E</item>
+        <item name="android:textColorHint">#9E9E9E</item>
+        <item name="boxBackgroundColor">#1A1A1A</item>
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.App.TextInputLayout</item>
+    </style>
+
+    <style name="ShapeAppearanceOverlay.App.TextInputLayout" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
+
+    <style name="MinimalistButton" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+        <item name="cornerRadius">12dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:letterSpacing">0.0</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:padding">14dp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+    
+    <style name="OutlinedMinimalistButton" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="cornerRadius">12dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:letterSpacing">0.0</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:padding">14dp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="strokeColor">#6D6D6D</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+</resources> 

@@ -1,0 +1,67 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+// Загрузка переменных окружения из .env файла
+def envFile = new File(rootProject.projectDir, '.env')
+def env = [:]
+if (envFile.exists()) {
+    envFile.eachLine { line ->
+        def parts = line.split('=')
+        if (parts.length == 2) {
+            env[parts[0]] = parts[1]
+        }
+    }
+} else {
+    System.err.println 'Warning: .env file not found. Please create it and add your Supabase credentials.'
+}
+
+android {
+    namespace 'com.example.ratertune'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.example.ratertune"
+        minSdk 29
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Добавляем env-переменные из BuildConfig
+        buildConfigField "String", "SUPABASE_URL", "\"${env.SUPABASE_URL ?: 'SUPABASE_URL'}\""
+        buildConfigField "String", "SUPABASE_KEY", "\"${env.SUPABASE_KEY ?: 'SUPABASE_KEY'}\""
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    buildFeatures {
+        buildConfig true
+    }
+}
+
+dependencies {
+    implementation libs.appcompat
+    implementation libs.material
+    implementation libs.activity
+    implementation libs.constraintlayout
+    testImplementation libs.junit
+    androidTestImplementation libs.ext.junit
+    androidTestImplementation libs.espresso.core
+    
+    // REST API клиенты
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+    implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
+    implementation 'com.google.code.gson:gson:2.10.1'
+}
