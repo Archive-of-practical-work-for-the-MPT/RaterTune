@@ -1,4 +1,4 @@
-package com.example.ratertune.model;
+package com.example.ratertune.models;
 
 public class Release {
     private String id;

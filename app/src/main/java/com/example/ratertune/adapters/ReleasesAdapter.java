@@ -1,4 +1,4 @@
-package com.example.ratertune.adapter;
+package com.example.ratertune.adapters;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,7 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ratertune.R;
-import com.example.ratertune.model.Release;
+import com.example.ratertune.models.Release;
 import com.squareup.picasso.Picasso;
 
 import java.util.List;

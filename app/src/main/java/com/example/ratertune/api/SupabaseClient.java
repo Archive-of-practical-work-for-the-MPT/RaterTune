@@ -2,10 +2,14 @@ package com.example.ratertune.api;
 
 import android.content.Context;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.example.ratertune.BuildConfig;
+import com.example.ratertune.models.Review;
 import com.example.ratertune.utils.Config;
+import com.example.ratertune.utils.SessionManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -13,13 +17,24 @@ import com.google.gson.JsonParser;
 import com.google.gson.annotations.SerializedName;
 import com.google.gson.reflect.TypeToken;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Type;
+import java.net.HttpURLConnection;
 import java.net.SocketTimeoutException;
+import java.net.URL;
 import java.net.UnknownHostException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
@@ -41,6 +56,17 @@ public class SupabaseClient {
     private String supabaseKey;
     private final Gson gson;
     private boolean isConfigValid = false;
+    private SessionManager sessionManager;
+
+    public interface ReviewsCallback {
+        void onSuccess(List<Review> reviews);
+        void onError(String error);
+    }
+
+    public interface ReviewCallback {
+        void onSuccess(Review review);
+        void onError(String error);
+    }
 
     private SupabaseClient() {
         // Получаем URL и ключ из конфигурационного файла
@@ -105,6 +131,13 @@ public class SupabaseClient {
             instance = new SupabaseClient();
         }
         return instance;
+    }
+
+    /**
+     * Устанавливает менеджер сессии
+     */
+    public void setSessionManager(SessionManager sessionManager) {
+        this.sessionManager = sessionManager;
     }
 
     /**
@@ -978,5 +1011,164 @@ public class SupabaseClient {
             Log.e(TAG, "Error extracting name from token", e);
             return null;
         }
+    }
+
+    public void getReviews(String releaseId, String token, ReviewsCallback callback) {
+        new Thread(() -> {
+            try {
+                String url = supabaseUrl + "/rest/v1/reviews?release_id=eq." + releaseId;
+                
+                URL apiUrl = new URL(url);
+                HttpURLConnection connection = (HttpURLConnection) apiUrl.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty("apikey", supabaseKey);
+                connection.setRequestProperty("Authorization", "Bearer " + token);
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setRequestProperty("Prefer", "return=representation");
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    JSONArray jsonArray = new JSONArray(response.toString());
+                    List<Review> reviews = new ArrayList<>();
+                    
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        
+                        Review review = new Review(
+                            json.getString("id"),
+                            json.getString("user_id"),
+                            json.getString("user_name"),
+                            json.optString("user_avatar_url", null),
+                            json.getString("release_id"),
+                            (float) json.getDouble("rating"),
+                            json.getString("text"),
+                            json.getString("created_at"),
+                            json.getString("updated_at")
+                        );
+                        reviews.add(review);
+                    }
+                    
+                    new Handler(Looper.getMainLooper()).post(() -> callback.onSuccess(reviews));
+                } else {
+                    new Handler(Looper.getMainLooper()).post(() -> 
+                        callback.onError("Failed to get reviews. Response code: " + responseCode));
+                }
+            } catch (Exception e) {
+                new Handler(Looper.getMainLooper()).post(() -> 
+                    callback.onError("Error getting reviews: " + e.getMessage()));
+            }
+        }).start();
+    }
+
+    public void addReview(String releaseId, float rating, String text, String token, ReviewCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Получаем текущего пользователя
+                String userId = getCurrentUserId();
+                String userName = getCurrentUserName();
+                String userAvatarUrl = getCurrentUserAvatarUrl();
+                
+                // Создаем JSON с данными рецензии
+                JsonObject reviewJson = new JsonObject();
+                reviewJson.addProperty("user_id", userId);
+                reviewJson.addProperty("user_name", userName);
+                reviewJson.addProperty("user_avatar_url", userAvatarUrl);
+                reviewJson.addProperty("release_id", releaseId);
+                reviewJson.addProperty("rating", rating);
+                reviewJson.addProperty("text", text);
+                
+                // Формируем запрос
+                String apiUrl = supabaseUrl + "/rest/v1/reviews";
+                
+                RequestBody requestBody = RequestBody.create(reviewJson.toString(), JSON);
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .addHeader("Content-Type", "application/json")
+                        .addHeader("Prefer", "return=representation")
+                        .post(requestBody)
+                        .build();
+                
+                // Отправляем запрос
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful() && !responseBody.isEmpty()) {
+                    // Парсим ответ
+                    // Проверяем, является ли ответ массивом
+                    if (responseBody.startsWith("[")) {
+                        // Если это массив, извлекаем первый элемент
+                        Type listType = new TypeToken<List<Review>>(){}.getType();
+                        List<Review> reviews = gson.fromJson(responseBody, listType);
+                        if (reviews != null && !reviews.isEmpty()) {
+                            callback.onSuccess(reviews.get(0));
+                        } else {
+                            callback.onError("Empty review data received");
+                        }
+                    } else {
+                        // Если это не массив, обрабатываем как раньше
+                        Review review = gson.fromJson(responseBody, Review.class);
+                        callback.onSuccess(review);
+                    }
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    callback.onError("Failed to create review: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error creating review", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Получает ID текущего пользователя
+     */
+    private String getCurrentUserId() {
+        if (sessionManager == null) {
+            Log.e(TAG, "SessionManager is not initialized");
+            return null;
+        }
+        return sessionManager.getUserId();
+    }
+    
+    /**
+     * Получает имя текущего пользователя
+     */
+    private String getCurrentUserName() {
+        if (sessionManager == null) {
+            Log.e(TAG, "SessionManager is not initialized");
+            return null;
+        }
+        return sessionManager.getUserName();
+    }
+    
+    /**
+     * Получает URL аватарки текущего пользователя
+     */
+    private String getCurrentUserAvatarUrl() {
+        if (sessionManager == null) {
+            Log.e(TAG, "SessionManager is not initialized");
+            return null;
+        }
+        return sessionManager.getUserAvatarUrl();
     }
 }
