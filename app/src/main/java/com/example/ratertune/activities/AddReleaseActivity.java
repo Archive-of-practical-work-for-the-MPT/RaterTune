@@ -1,4 +1,4 @@
-package com.example.ratertune;
+package com.example.ratertune.activities;
 
 import android.app.DatePickerDialog;
 import android.content.Intent;
@@ -16,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.ratertune.R;
 import com.example.ratertune.api.SupabaseClient;
 import com.example.ratertune.utils.SessionManager;
 import com.google.android.material.snackbar.Snackbar;

@@ -1,4 +1,4 @@
-package com.example.ratertune;
+package com.example.ratertune.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -7,7 +7,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.viewpager2.widget.ViewPager2;
+import com.example.ratertune.R;
 import com.example.ratertune.adapter.ReleasesAdapter;
 import com.example.ratertune.api.SupabaseClient;
 import com.example.ratertune.model.Release;
@@ -128,8 +128,14 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     
     @Override
     public void onReleaseClick(Release release) {
-        // Здесь можно открыть детальную информацию о релизе
-        Toast.makeText(this, "Выбран альбом: " + release.getTitle(), Toast.LENGTH_SHORT).show();
-        // TODO: Добавить переход на экран деталей альбома
+        // Открываем экран с деталями альбома
+        Intent intent = new Intent(this, ReleaseDetailsActivity.class);
+        intent.putExtra("id", release.getId());
+        intent.putExtra("title", release.getTitle());
+        intent.putExtra("artist", release.getArtist());
+        intent.putExtra("imageUrl", release.getImageUrl());
+        intent.putExtra("rating", release.getRating());
+        intent.putExtra("releaseDate", release.getReleaseDate());
+        startActivity(intent);
     }
 }

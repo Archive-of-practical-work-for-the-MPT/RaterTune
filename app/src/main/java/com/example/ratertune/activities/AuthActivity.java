@@ -1,4 +1,4 @@
-package com.example.ratertune;
+package com.example.ratertune.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -13,6 +13,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
+import com.example.ratertune.R;
 import com.example.ratertune.utils.SessionManager;
 import com.example.ratertune.utils.Config;
 import com.example.ratertune.api.SupabaseClient;
@@ -116,7 +117,8 @@ public class AuthActivity extends AppCompatActivity {
                             response.getUser().getEmail(),
                             response.getUser().getName(),
                             response.getAccessToken(),
-                            response.getRefreshToken()
+                            response.getRefreshToken(),
+                            response.getUser().getAvatarUrl()
                         );
                         // Переходим на главный экран
                         startActivity(new Intent(AuthActivity.this, MainActivity.class));

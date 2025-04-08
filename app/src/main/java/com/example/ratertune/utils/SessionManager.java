@@ -28,14 +28,22 @@ public class SessionManager {
     /**
      * Сохраняет данные пользователя после успешной авторизации
      */
-    public void createLoginSession(String userId, String email, String name, String accessToken, String refreshToken) {
+    public void createLoginSession(String userId, String email, String name, String accessToken, String refreshToken, String avatarUrl) {
         editor.putString(KEY_USER_ID, userId);
         editor.putString(KEY_USER_EMAIL, email);
         editor.putString(KEY_USER_NAME, name);
         editor.putString(KEY_ACCESS_TOKEN, accessToken);
         editor.putString(KEY_REFRESH_TOKEN, refreshToken);
+        editor.putString(KEY_USER_AVATAR_URL, avatarUrl);
         editor.putBoolean(KEY_IS_LOGGED_IN, true);
         editor.commit();
+    }
+
+    /**
+     * Сохраняет данные пользователя после успешной авторизации (без аватарки)
+     */
+    public void createLoginSession(String userId, String email, String name, String accessToken, String refreshToken) {
+        createLoginSession(userId, email, name, accessToken, refreshToken, null);
     }
 
     /**

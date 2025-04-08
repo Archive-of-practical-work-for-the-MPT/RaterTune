@@ -1,4 +1,4 @@
-package com.example.ratertune;
+package com.example.ratertune.activities;
 
 import android.content.Intent;
 import android.net.Uri;
@@ -14,6 +14,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import com.example.ratertune.R;
 import com.example.ratertune.api.SupabaseClient;
 import com.example.ratertune.utils.SessionManager;
 import com.google.android.material.imageview.ShapeableImageView;
@@ -257,35 +258,37 @@ public class ProfileActivity extends AppCompatActivity {
         try {
             return getContentResolver().openFileDescriptor(imageUri, "r").getStatSize();
         } catch (Exception e) {
+            e.printStackTrace();
             return 0;
         }
     }
     
     /**
-     * Обновляет никнейм пользователя
+     * Обновляет имя пользователя
      */
     private void updateUsername() {
         String newUsername = usernameInput.getText().toString().trim();
         
-        // Проверка введенного имени
+        // Проверка на пустое имя
         if (TextUtils.isEmpty(newUsername)) {
-            usernameLayout.setError("Введите никнейм");
+            usernameLayout.setError("Имя пользователя не может быть пустым");
             return;
         }
-        
-        if (newUsername.length() < 3) {
-            usernameLayout.setError("Никнейм должен содержать минимум 3 символа");
-            return;
-        }
-        
         usernameLayout.setError(null);
+        
         showLoading(true);
         
         // Получаем необходимые данные из сессии
         String userId = sessionManager.getUserId();
         String token = sessionManager.getAccessToken();
         
-        // Выполняем запрос на обновление профиля
+        if (userId == null || token == null) {
+            showLoading(false);
+            showError("Ошибка авторизации");
+            return;
+        }
+        
+        // Вызываем метод обновления имени пользователя
         SupabaseClient.getInstance().updateUserProfile(
             userId,
             newUsername,
@@ -296,27 +299,16 @@ public class ProfileActivity extends AppCompatActivity {
                     runOnUiThread(() -> {
                         showLoading(false);
                         
-                        // Получаем имя пользователя из ответа
-                        String userName = updatedUser.getName();
+                        // Обновляем имя в сессии
+                        sessionManager.updateUserName(newUsername);
                         
-                        // Убеждаемся, что имя не пустое
-                        if (TextUtils.isEmpty(userName)) {
-                            userName = newUsername;
-                        }
-                        
-                        // Обновляем данные в сессии
-                        sessionManager.updateUserName(userName);
-                        
-                        // Обновляем отображение имени в UI
-                        userNameText.setText(userName);
-                        
-                        // Принудительно обновляем поле ввода, чтобы оно показывало обновленное имя
-                        usernameInput.setText(userName);
+                        // Обновляем отображение имени
+                        userNameText.setText(newUsername);
                         
                         // Сообщаем пользователю об успешном обновлении
                         Snackbar.make(
                             findViewById(android.R.id.content),
-                            "Никнейм успешно обновлен на: " + userName,
+                            "Имя пользователя успешно обновлено",
                             Snackbar.LENGTH_LONG
                         ).show();
                     });
@@ -339,31 +331,35 @@ public class ProfileActivity extends AppCompatActivity {
     private void showUpdateError(String errorMessage) {
         String userFriendlyMessage;
         
-        if (errorMessage.contains("Configuration error")) {
-            userFriendlyMessage = "Не удалось подключиться к серверу. Пожалуйста, сообщите разработчикам об этой проблеме.";
-        } 
-        else if (errorMessage.contains("Network error") || errorMessage.contains("timeout")) {
-            userFriendlyMessage = "Проверьте подключение к интернету и попробуйте снова.";
-        }
-        else if (errorMessage.contains("token") || errorMessage.contains("auth")) {
-            userFriendlyMessage = "Ошибка авторизации. Пожалуйста, выйдите из аккаунта и войдите снова.";
-        }
-        else {
-            userFriendlyMessage = "Не удалось обновить профиль. Пожалуйста, попробуйте позже.";
+        if (errorMessage.contains("Network error")) {
+            userFriendlyMessage = "Ошибка сети. Проверьте подключение к интернету.";
+        } else if (errorMessage.contains("Unauthorized")) {
+            userFriendlyMessage = "Ошибка авторизации. Пожалуйста, войдите снова.";
+            // Возвращаемся на экран авторизации
+            Intent intent = new Intent(this, AuthActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+            finish();
+        } else {
+            userFriendlyMessage = "Произошла ошибка при обновлении профиля. Попробуйте позже.";
         }
         
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Ошибка обновления")
-               .setMessage(userFriendlyMessage)
-               .setPositiveButton("Понятно", null)
-               .show();
+        Snackbar.make(
+            findViewById(android.R.id.content),
+            userFriendlyMessage,
+            Snackbar.LENGTH_LONG
+        ).show();
     }
     
     /**
-     * Показывает ошибку в виде Toast
+     * Показывает сообщение об ошибке
      */
     private void showError(String message) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
+        Snackbar.make(
+            findViewById(android.R.id.content),
+            message,
+            Snackbar.LENGTH_LONG
+        ).show();
     }
     
     /**
@@ -373,7 +369,6 @@ public class ProfileActivity extends AppCompatActivity {
         if (profileProgressOverlay != null) {
             profileProgressOverlay.setVisibility(isLoading ? View.VISIBLE : View.GONE);
         }
-        
         // Блокируем кнопки во время загрузки
         saveUsernameButton.setEnabled(!isLoading);
         logoutButton.setEnabled(!isLoading);
