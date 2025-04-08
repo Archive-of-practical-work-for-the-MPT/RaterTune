@@ -23,6 +23,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.squareup.picasso.Picasso;
 
+import java.util.Objects;
+
 public class ProfileActivity extends AppCompatActivity {
     private static final int MAX_IMAGE_SIZE_MB = 5; // Максимальный размер изображения в МБ
     
@@ -166,18 +168,14 @@ public class ProfileActivity extends AppCompatActivity {
                .into(profileImage);
     }
     
-    /**
-     * Открывает диалог выбора изображения из галереи
-     */
+    // Открывает диалог выбора изображения из галереи
     private void openImagePicker() {
         Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         intent.setType("image/*");
         pickImageLauncher.launch(intent);
     }
     
-    /**
-     * Показывает диалог подтверждения загрузки аватарки
-     */
+    // Показывает диалог подтверждения загрузки аватарки
     private void showUploadAvatarDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Загрузить аватарку")
@@ -187,9 +185,7 @@ public class ProfileActivity extends AppCompatActivity {
                .show();
     }
     
-    /**
-     * Загружает выбранную аватарку в Supabase
-     */
+    // Загружает выбранную аватарку в Supabase
     private void uploadAvatar() {
         if (selectedAvatarUri == null) {
             showError("Сначала выберите изображение");
@@ -251,23 +247,19 @@ public class ProfileActivity extends AppCompatActivity {
         );
     }
     
-    /**
-     * Получает размер изображения в байтах
-     */
+    // Получает размер изображения в байтах
     private long getImageSize(Uri imageUri) {
         try {
-            return getContentResolver().openFileDescriptor(imageUri, "r").getStatSize();
+            return Objects.requireNonNull(getContentResolver().openFileDescriptor(imageUri, "r")).getStatSize();
         } catch (Exception e) {
             e.printStackTrace();
             return 0;
         }
     }
     
-    /**
-     * Обновляет имя пользователя
-     */
+    // Обновляет имя пользователя
     private void updateUsername() {
-        String newUsername = usernameInput.getText().toString().trim();
+        String newUsername = Objects.requireNonNull(usernameInput.getText()).toString().trim();
         
         // Проверка на пустое имя
         if (TextUtils.isEmpty(newUsername)) {
@@ -325,9 +317,7 @@ public class ProfileActivity extends AppCompatActivity {
         );
     }
     
-    /**
-     * Показывает сообщение об ошибке обновления профиля
-     */
+    // Показывает сообщение об ошибке обновления профиля
     private void showUpdateError(String errorMessage) {
         String userFriendlyMessage;
         
@@ -351,9 +341,7 @@ public class ProfileActivity extends AppCompatActivity {
         ).show();
     }
     
-    /**
-     * Показывает сообщение об ошибке
-     */
+    // Показывает сообщение об ошибке
     private void showError(String message) {
         Snackbar.make(
             findViewById(android.R.id.content),
@@ -362,9 +350,7 @@ public class ProfileActivity extends AppCompatActivity {
         ).show();
     }
     
-    /**
-     * Показывает или скрывает индикатор загрузки
-     */
+    // Показывает или скрывает индикатор загрузки
     private void showLoading(boolean isLoading) {
         if (profileProgressOverlay != null) {
             profileProgressOverlay.setVisibility(isLoading ? View.VISIBLE : View.GONE);

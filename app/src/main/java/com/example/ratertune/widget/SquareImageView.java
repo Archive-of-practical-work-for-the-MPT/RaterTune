@@ -5,9 +5,7 @@ import android.util.AttributeSet;
 
 import androidx.appcompat.widget.AppCompatImageView;
 
-/**
- * ImageView с соотношением сторон 1:1 (квадрат)
- */
+// ImageView с соотношением сторон 1:1 (квадрат)
 public class SquareImageView extends AppCompatImageView {
 
     public SquareImageView(Context context) {

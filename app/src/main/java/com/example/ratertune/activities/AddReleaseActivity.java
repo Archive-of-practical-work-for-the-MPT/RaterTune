@@ -26,6 +26,7 @@ import com.squareup.picasso.Picasso;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
+import java.util.Objects;
 
 public class AddReleaseActivity extends AppCompatActivity {
     private ImageView coverImage;
@@ -34,7 +35,6 @@ public class AddReleaseActivity extends AppCompatActivity {
     private TextInputEditText releaseDateInput;
     private Button uploadButton;
     private Button saveButton;
-    private ImageButton backButton;
     private View progressOverlay;
     private Uri selectedImageUri;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
@@ -67,7 +67,7 @@ public class AddReleaseActivity extends AppCompatActivity {
         releaseDateInput = findViewById(R.id.releaseDateInput);
         uploadButton = findViewById(R.id.uploadButton);
         saveButton = findViewById(R.id.saveButton);
-        backButton = findViewById(R.id.backButton);
+        ImageButton backButton = findViewById(R.id.backButton);
         progressOverlay = findViewById(R.id.addReleaseProgressOverlay);
 
         // Обработчик нажатия на кнопку загрузки обложки
@@ -103,9 +103,9 @@ public class AddReleaseActivity extends AppCompatActivity {
     }
 
     private void saveRelease() {
-        String albumTitle = albumTitleInput.getText().toString().trim();
-        String artist = artistInput.getText().toString().trim();
-        String releaseDate = releaseDateInput.getText().toString().trim();
+        String albumTitle = Objects.requireNonNull(albumTitleInput.getText()).toString().trim();
+        String artist = Objects.requireNonNull(artistInput.getText()).toString().trim();
+        String releaseDate = Objects.requireNonNull(releaseDateInput.getText()).toString().trim();
 
         if (albumTitle.isEmpty() || artist.isEmpty() || releaseDate.isEmpty() || selectedImageUri == null) {
             Toast.makeText(this, "Пожалуйста, заполните все поля и загрузите обложку", Toast.LENGTH_SHORT).show();
@@ -150,9 +150,7 @@ public class AddReleaseActivity extends AppCompatActivity {
         );
     }
 
-    /**
-     * Показывает сообщение об успешном добавлении альбома
-     */
+    // Показывает сообщение об успешном добавлении альбома
     private void showSuccessMessage() {
         Snackbar.make(
             findViewById(android.R.id.content),
@@ -161,9 +159,7 @@ public class AddReleaseActivity extends AppCompatActivity {
         ).show();
     }
 
-    /**
-     * Показывает сообщение об ошибке при добавлении альбома
-     */
+    // Показывает сообщение об ошибке при добавлении альбома
     private void showErrorMessage(String errorMessage) {
         String userFriendlyMessage;
         
@@ -187,9 +183,7 @@ public class AddReleaseActivity extends AppCompatActivity {
                .show();
     }
 
-    /**
-     * Показывает или скрывает индикатор загрузки
-     */
+    // Показывает или скрывает индикатор загрузки
     private void showLoading(boolean isLoading) {
         if (progressOverlay != null) {
             progressOverlay.setVisibility(isLoading ? View.VISIBLE : View.GONE);

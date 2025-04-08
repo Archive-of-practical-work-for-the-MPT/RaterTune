@@ -23,25 +23,16 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.squareup.picasso.Picasso;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ReleaseDetailsActivity extends AppCompatActivity {
-    private Toolbar toolbar;
-    private SquareImageView coverImage;
-    private TextView titleText;
-    private TextView artistText;
-    private TextView releaseDateText;
-    private TextView ratingText;
     private TextView noReviewsText;
     private RecyclerView reviewsRecyclerView;
     private ReviewsAdapter reviewsAdapter;
-    private ImageButton addReviewButton;
     private String releaseId;
     private SupabaseClient supabaseClient;
-    private ImageButton backButton;
     private SessionManager sessionManager;
-    
-    // Bottom sheet components
-    private View addReviewBottomSheet;
+
     private BottomSheetBehavior<View> bottomSheetBehavior;
     private Slider ratingSlider;
     private TextView ratingValueText;
@@ -58,20 +49,18 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
         sessionManager = new SessionManager(this);
         supabaseClient.setSessionManager(sessionManager);
 
-        // Initialize views
-        toolbar = findViewById(R.id.toolbar);
-        coverImage = findViewById(R.id.coverImage);
-        titleText = findViewById(R.id.titleText);
-        artistText = findViewById(R.id.artistText);
-        releaseDateText = findViewById(R.id.releaseDateText);
-        ratingText = findViewById(R.id.ratingText);
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        SquareImageView coverImage = findViewById(R.id.coverImage);
+        TextView titleText = findViewById(R.id.titleText);
+        TextView artistText = findViewById(R.id.artistText);
+        TextView releaseDateText = findViewById(R.id.releaseDateText);
+        TextView ratingText = findViewById(R.id.ratingText);
         noReviewsText = findViewById(R.id.noReviewsText);
         reviewsRecyclerView = findViewById(R.id.reviewsRecyclerView);
-        addReviewButton = findViewById(R.id.addReviewButton);
-        backButton = findViewById(R.id.backButton);
-        
-        // Initialize bottom sheet components
-        addReviewBottomSheet = findViewById(R.id.addReviewBottomSheet);
+        ImageButton addReviewButton = findViewById(R.id.addReviewButton);
+        ImageButton backButton = findViewById(R.id.backButton);
+
+        View addReviewBottomSheet = findViewById(R.id.addReviewBottomSheet);
         bottomSheetBehavior = BottomSheetBehavior.from(addReviewBottomSheet);
         ratingSlider = addReviewBottomSheet.findViewById(R.id.ratingSlider);
         ratingValueText = addReviewBottomSheet.findViewById(R.id.ratingValueText);
@@ -79,15 +68,12 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
         cancelButton = addReviewBottomSheet.findViewById(R.id.cancelButton);
         submitButton = addReviewBottomSheet.findViewById(R.id.submitButton);
 
-        // Setup toolbar
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        // Setup reviews RecyclerView
         reviewsAdapter = new ReviewsAdapter(new ArrayList<>());
         reviewsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         reviewsRecyclerView.setAdapter(reviewsAdapter);
 
-        // Get release data from intent
         Intent intent = getIntent();
         releaseId = intent.getStringExtra("id");
         String title = intent.getStringExtra("title");
@@ -96,13 +82,11 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
         float rating = intent.getFloatExtra("rating", 0f);
         String releaseDate = intent.getStringExtra("releaseDate");
 
-        // Set release data
         titleText.setText(title);
         artistText.setText(artist);
         releaseDateText.setText(releaseDate);
         ratingText.setText(String.format("%.1f", rating));
 
-        // Load cover image
         if (imageUrl != null && !imageUrl.isEmpty()) {
             Picasso.get()
                    .load(imageUrl)
@@ -115,33 +99,25 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
             coverImage.setImageResource(R.drawable.ic_album_placeholder);
         }
 
-        // Setup add review button
         addReviewButton.setOnClickListener(v -> showAddReviewBottomSheet());
 
-        // Setup back button
         backButton.setOnClickListener(v -> finish());
-        
-        // Setup bottom sheet components
+
         setupBottomSheet();
 
-        // Load reviews
         loadReviews();
     }
 
     private void setupBottomSheet() {
-        // Set initial rating value
         ratingSlider.setValue(5.0f);
         ratingValueText.setText(String.format("%.1f", 5.0f));
 
-        // Update rating value text when slider changes
         ratingSlider.addOnChangeListener((slider, value, fromUser) -> 
             ratingValueText.setText(String.format("%.1f", value))
         );
-        
-        // Setup cancel button
+
         cancelButton.setOnClickListener(v -> hideAddReviewBottomSheet());
-        
-        // Setup submit button
+
         submitButton.setOnClickListener(v -> submitReview());
     }
     
@@ -154,7 +130,7 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
     }
     
     private void submitReview() {
-        String text = reviewTextInput.getText().toString().trim();
+        String text = Objects.requireNonNull(reviewTextInput.getText()).toString().trim();
         float rating = ratingSlider.getValue();
         
         if (text.isEmpty()) {

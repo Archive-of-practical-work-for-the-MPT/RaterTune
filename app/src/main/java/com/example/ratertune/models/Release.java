@@ -1,12 +1,12 @@
 package com.example.ratertune.models;
 
 public class Release {
-    private String id;
-    private String title;
-    private String artist;
-    private String imageUrl;
-    private float rating;
-    private String releaseDate;
+    private final String id;
+    private final String title;
+    private final String artist;
+    private final String imageUrl;
+    private final float rating;
+    private final String releaseDate;
 
     public Release(String id, String title, String artist, String imageUrl, float rating, String releaseDate) {
         this.id = id;

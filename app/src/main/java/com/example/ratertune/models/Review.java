@@ -75,9 +75,7 @@ public class Review {
         this.releaseId = releaseId;
     }
 
-    public float getRating() {
-        return rating;
-    }
+    public float getRating() { return rating; }
 
     public void setRating(float rating) {
         this.rating = rating;
@@ -110,6 +108,7 @@ public class Review {
     public String getFormattedDate() {
         try {
             Date date = inputFormat.parse(createdAt);
+            assert date != null;
             return outputFormat.format(date);
         } catch (ParseException e) {
             return createdAt;

@@ -11,13 +11,11 @@ import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * Класс для загрузки конфигурации из файла .env.properties
- */
+// Класс для загрузки конфигурации из файла .env.properties
 public class Config {
     private static final String TAG = "Config";
     private static final String ENV_FILE = ".env.properties";
-    private static Map<String, String> config = new HashMap<>();
+    private static final Map<String, String> config = new HashMap<>();
     private static boolean isInitialized = false;
 
     /**
@@ -32,7 +30,8 @@ public class Config {
             // Проверяем список файлов в директории assets
             String[] files = assetManager.list("");
             boolean fileFound = false;
-            
+
+            assert files != null;
             for (String file : files) {
                 Log.d(TAG, "Found asset file: " + file);
                 if (ENV_FILE.equals(file)) {
@@ -63,9 +62,7 @@ public class Config {
         }
     }
     
-    /**
-     * Загружает конфигурацию из входного потока
-     */
+    // Загружает конфигурацию из входного потока
     private static void loadConfigFromStream(InputStream inputStream) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
         String line;

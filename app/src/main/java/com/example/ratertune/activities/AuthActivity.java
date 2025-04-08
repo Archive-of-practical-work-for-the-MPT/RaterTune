@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
 
@@ -17,6 +16,8 @@ import com.example.ratertune.R;
 import com.example.ratertune.utils.SessionManager;
 import com.example.ratertune.utils.Config;
 import com.example.ratertune.api.SupabaseClient;
+
+import java.util.Objects;
 
 public class AuthActivity extends AppCompatActivity {
     private TextInputLayout emailLayout, passwordLayout;
@@ -80,8 +81,8 @@ public class AuthActivity extends AppCompatActivity {
     }
 
     private void handleAuth() {
-        String email = emailInput.getText().toString().trim();
-        String password = passwordInput.getText().toString().trim();
+        String email = Objects.requireNonNull(emailInput.getText()).toString().trim();
+        String password = Objects.requireNonNull(passwordInput.getText()).toString().trim();
 
         // Проверка введенных данных
         if (TextUtils.isEmpty(email)) {
@@ -204,9 +205,7 @@ public class AuthActivity extends AppCompatActivity {
                .show();
     }
     
-    /**
-     * Показывает сообщение об успешной регистрации
-     */
+    // Показывает сообщение об успешной регистрации
     private void showRegistrationSuccess() {
         Snackbar.make(rootView, "Регистрация успешна! Теперь вы можете войти, используя созданный аккаунт.", 
                      Snackbar.LENGTH_LONG)
@@ -215,9 +214,7 @@ public class AuthActivity extends AppCompatActivity {
                 .show();
     }
     
-    /**
-     * Показывает или скрывает индикатор загрузки
-     */
+    // Показывает или скрывает индикатор загрузки
     private void showLoading(boolean isLoading) {
         if (progressOverlay != null) {
             progressOverlay.setVisibility(isLoading ? View.VISIBLE : View.GONE);

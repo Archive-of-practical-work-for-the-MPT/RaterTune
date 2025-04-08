@@ -16,9 +16,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements ReleasesAdapter.OnReleaseClickListener {
-    private RecyclerView releasesRecyclerView;
-    private ImageButton profileButton;
-    private ImageButton addReleaseButton;
     private SessionManager sessionManager;
     private List<Release> releasesList;
     private ReleasesAdapter releasesAdapter;
@@ -42,9 +39,9 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         setContentView(R.layout.activity_main);
 
         // Инициализация компонентов
-        releasesRecyclerView = findViewById(R.id.releasesRecyclerView);
-        profileButton = findViewById(R.id.profileButton);
-        addReleaseButton = findViewById(R.id.addReleaseButton);
+        RecyclerView releasesRecyclerView = findViewById(R.id.releasesRecyclerView);
+        ImageButton profileButton = findViewById(R.id.profileButton);
+        ImageButton addReleaseButton = findViewById(R.id.addReleaseButton);
 
         // Настройка RecyclerView
         releasesList = new ArrayList<>();
@@ -75,9 +72,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         loadUserReleases();
     }
     
-    /**
-     * Загружает альбомы пользователя из Supabase
-     */
+    // Загружает альбомы пользователя из Supabase
     private void loadUserReleases() {
         String userId = sessionManager.getUserId();
         String token = sessionManager.getAccessToken();

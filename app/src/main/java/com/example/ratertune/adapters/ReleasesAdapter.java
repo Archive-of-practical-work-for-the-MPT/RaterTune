@@ -16,8 +16,8 @@ import com.squareup.picasso.Picasso;
 import java.util.List;
 
 public class ReleasesAdapter extends RecyclerView.Adapter<ReleasesAdapter.ReleaseViewHolder> {
-    private List<Release> releases;
-    private OnReleaseClickListener listener;
+    private final List<Release> releases;
+    private final OnReleaseClickListener listener;
 
     public interface OnReleaseClickListener {
         void onReleaseClick(Release release);

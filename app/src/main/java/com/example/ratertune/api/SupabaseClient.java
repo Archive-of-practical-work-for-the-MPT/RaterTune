@@ -44,9 +44,8 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.logging.HttpLoggingInterceptor;
 
-/**
- * Клиент для взаимодействия с Supabase API
- */
+
+// Клиент для взаимодействия с Supabase API
 public class SupabaseClient {
     private static final String TAG = "SupabaseClient";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
@@ -82,32 +81,19 @@ public class SupabaseClient {
                 supabaseKey = BuildConfig.SUPABASE_KEY;
                 
                 // Проверка на временные placeholder значения из BuildConfig
-                if ("SUPABASE_URL".equals(supabaseUrl) || "SUPABASE_KEY".equals(supabaseKey)) {
-                    Log.e(TAG, "BuildConfig contains placeholder values");
-                    supabaseUrl = null;
-                    supabaseKey = null;
-                }
             } catch (Exception e) {
                 Log.e(TAG, "Error accessing BuildConfig fields", e);
             }
         }
 
         // Финальная проверка URL и ключа
-        if (supabaseUrl == null || supabaseKey == null) {
-            Log.e(TAG, "Supabase URL or Key not found in configuration!");
-            // Устанавливаем временные значения для предотвращения NullPointerException
-            supabaseUrl = "https://example.com";
-            supabaseKey = "temp_key";
-            isConfigValid = false;
-        } else {
-            // Проверяем формат URL, чтобы он начинался с http:// или https://
-            if (!supabaseUrl.startsWith("http://") && !supabaseUrl.startsWith("https://")) {
-                supabaseUrl = "https://" + supabaseUrl;
-                Log.w(TAG, "Added https:// prefix to Supabase URL");
-            }
-            isConfigValid = true;
-            Log.i(TAG, "Supabase configuration loaded successfully: " + supabaseUrl);
+        // Проверяем формат URL, чтобы он начинался с http:// или https://
+        if (!supabaseUrl.startsWith("http://") && !supabaseUrl.startsWith("https://")) {
+            supabaseUrl = "https://" + supabaseUrl;
+            Log.w(TAG, "Added https:// prefix to Supabase URL");
         }
+        isConfigValid = true;
+        Log.i(TAG, "Supabase configuration loaded successfully: " + supabaseUrl);
 
         // Настраиваем HTTP-клиент с логированием
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
@@ -123,9 +109,7 @@ public class SupabaseClient {
         gson = new Gson();
     }
 
-    /**
-     * Получает единственный экземпляр клиента
-     */
+    // Получает единственный экземпляр клиента
     public static synchronized SupabaseClient getInstance() {
         if (instance == null) {
             instance = new SupabaseClient();

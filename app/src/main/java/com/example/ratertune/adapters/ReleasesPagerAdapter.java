@@ -16,7 +16,7 @@ import com.squareup.picasso.Picasso;
 import java.util.List;
 
 public class ReleasesPagerAdapter extends RecyclerView.Adapter<ReleasesPagerAdapter.ReleaseViewHolder> {
-    private List<Release> releases;
+    private final List<Release> releases;
 
     public ReleasesPagerAdapter(List<Release> releases) {
         this.releases = releases;

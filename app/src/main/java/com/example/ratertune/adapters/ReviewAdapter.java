@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class ReviewAdapter extends RecyclerView.Adapter<ReviewAdapter.ReviewViewHolder> {
-    private List<Review> reviews;
+    private final List<Review> reviews;
 
     public ReviewAdapter(List<Review> reviews) {
         this.reviews = reviews;
