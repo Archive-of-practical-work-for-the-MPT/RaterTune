@@ -125,10 +125,9 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     }
     
     private void loadUserStories() {
-        String userId = sessionManager.getUserId();
         String token = sessionManager.getAccessToken();
         
-        supabaseClient.getUserStories(userId, token, new StoriesListCallback() {
+        supabaseClient.getAllStories(token, new StoriesListCallback() {
             @Override
             public void onSuccess(List<Story> stories) {
                 runOnUiThread(() -> {
@@ -153,15 +152,14 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     }
     
     private void loadUserReleases() {
-        String userId = sessionManager.getUserId();
         String token = sessionManager.getAccessToken();
         
-        if (userId == null || token == null) {
+        if (token == null) {
             Toast.makeText(this, "Ошибка авторизации", Toast.LENGTH_SHORT).show();
             return;
         }
         
-        supabaseClient.getUserReleases(userId, token, new SupabaseClient.ReleasesListCallback() {
+        supabaseClient.getAllReleases(token, new SupabaseClient.ReleasesListCallback() {
             @Override
             public void onSuccess(List<SupabaseClient.Release> releases) {
                 // Конвертируем SupabaseClient.Release в нашу модель Release
@@ -190,7 +188,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
                     }
                     
                     if (releasesList.isEmpty()) {
-                        Toast.makeText(MainActivity.this, "У вас пока нет добавленных альбомов", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Пока нет добавленных альбомов", Toast.LENGTH_SHORT).show();
                     }
                 });
             }

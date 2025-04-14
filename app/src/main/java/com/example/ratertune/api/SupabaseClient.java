@@ -1425,4 +1425,92 @@ public class SupabaseClient {
             }
         }).start();
     }
+
+    /**
+     * Получает список всех сторизов
+     */
+    public void getAllStories(String token, StoriesListCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Формируем запрос - загружаем все сторизы, которые не истекли
+                String apiUrl = supabaseUrl + "/rest/v1/stories?expires_at=gt.now()&order=created_at.desc";
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+                
+                // Отправляем запрос
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful() && !responseBody.isEmpty()) {
+                    // Парсим ответ
+                    Type listType = new TypeToken<List<com.example.ratertune.models.Story>>(){}.getType();
+                    List<com.example.ratertune.models.Story> stories = gson.fromJson(responseBody, listType);
+                    callback.onSuccess(stories);
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    callback.onError("Failed to load stories: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading stories", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Получает список всех релизов из Supabase
+     */
+    public void getAllReleases(String token, ReleasesListCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Формируем запрос на получение всех релизов
+                String apiUrl = supabaseUrl + "/rest/v1/releases?order=created_at.desc";
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+                
+                // Отправляем запрос
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful() && !responseBody.isEmpty()) {
+                    // Парсим JSON
+                    Type listType = new TypeToken<List<Release>>(){}.getType();
+                    List<Release> releases = gson.fromJson(responseBody, listType);
+                    callback.onSuccess(releases);
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    callback.onError("Failed to load releases: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading releases", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
 }
