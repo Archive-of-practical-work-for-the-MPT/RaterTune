@@ -1,26 +1,54 @@
 package com.example.ratertune.models;
 
+import android.util.Log;
+import com.google.gson.annotations.SerializedName;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
 public class Review {
+    private static final String TAG = "Review";
+    
+    @SerializedName("id")
     private String id;
+    
+    @SerializedName("user_id")
     private String userId;
+    
+    @SerializedName("user_name")
     private String userName;
+    
+    @SerializedName("user_avatar_url")
     private String userAvatarUrl;
+    
+    @SerializedName("release_id")
     private String releaseId;
+    
+    @SerializedName("rating")
     private float rating;
+    
+    @SerializedName("text")
     private String text;
+    
+    @SerializedName("created_at")
     private String createdAt;
+    
+    @SerializedName("updated_at")
     private String updatedAt;
 
-    private static final SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault());
-    private static final SimpleDateFormat outputFormat = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+    private static final SimpleDateFormat[] inputFormats = new SimpleDateFormat[] {
+        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()),
+        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()),
+        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS'Z'", Locale.getDefault()),
+        new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()),
+        new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX", Locale.getDefault())
+    };
+    
+    private static final SimpleDateFormat outputFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault());
 
     public Review() {
-        // Default constructor required for Firebase
+        // Default constructor required for Gson
     }
 
     public Review(String id, String userId, String userName, String userAvatarUrl, String releaseId, float rating, String text, String createdAt, String updatedAt) {
@@ -33,6 +61,8 @@ public class Review {
         this.text = text;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        
+        Log.d(TAG, "Created review with date: " + createdAt);
     }
 
     public String getId() {
@@ -106,12 +136,38 @@ public class Review {
     }
 
     public String getFormattedDate() {
+        if (createdAt == null || createdAt.isEmpty()) {
+            Log.e(TAG, "createdAt is null or empty");
+            return "Дата неизвестна";
+        }
+        
         try {
-            Date date = inputFormat.parse(createdAt);
-            assert date != null;
-            return outputFormat.format(date);
-        } catch (ParseException e) {
-            return createdAt;
+            Log.d(TAG, "Trying to format date: " + createdAt);
+            Date date = null;
+            
+            for (SimpleDateFormat format : inputFormats) {
+                try {
+                    date = format.parse(createdAt);
+                    if (date != null) {
+                        Log.d(TAG, "Successfully parsed with format: " + format.toPattern());
+                        break;
+                    }
+                } catch (ParseException e) {
+                    // Continue to the next format
+                }
+            }
+            
+            if (date != null) {
+                String formattedDate = outputFormat.format(date);
+                Log.d(TAG, "Formatted date: " + formattedDate);
+                return formattedDate;
+            } else {
+                Log.e(TAG, "Could not parse date: " + createdAt);
+                return createdAt; // Return raw date if parsing fails
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error formatting date: " + e.getMessage(), e);
+            return createdAt; // Return raw date on error
         }
     }
 } 

@@ -1001,6 +1001,7 @@ public class SupabaseClient {
         new Thread(() -> {
             try {
                 String url = supabaseUrl + "/rest/v1/reviews?release_id=eq." + releaseId;
+                Log.d(TAG, "Getting reviews for release: " + releaseId);
                 
                 URL apiUrl = new URL(url);
                 HttpURLConnection connection = (HttpURLConnection) apiUrl.openConnection();
@@ -1011,6 +1012,8 @@ public class SupabaseClient {
                 connection.setRequestProperty("Prefer", "return=representation");
 
                 int responseCode = connection.getResponseCode();
+                Log.d(TAG, "Reviews API response code: " + responseCode);
+                
                 if (responseCode == HttpURLConnection.HTTP_OK) {
                     BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
                     StringBuilder response = new StringBuilder();
@@ -1020,11 +1023,33 @@ public class SupabaseClient {
                     }
                     reader.close();
 
-                    JSONArray jsonArray = new JSONArray(response.toString());
+                    String responseStr = response.toString();
+                    Log.d(TAG, "Reviews API raw response: " + responseStr);
+                    
+                    JSONArray jsonArray = new JSONArray(responseStr);
                     List<Review> reviews = new ArrayList<>();
+                    
+                    Log.d(TAG, "Got " + jsonArray.length() + " reviews");
                     
                     for (int i = 0; i < jsonArray.length(); i++) {
                         JSONObject json = jsonArray.getJSONObject(i);
+                        
+                        // Логируем все поля объекта
+                        Log.d(TAG, "Review " + i + " full JSON: " + json.toString());
+                        
+                        String createdAt = null;
+                        if (json.has("created_at") && !json.isNull("created_at")) {
+                            createdAt = json.getString("created_at");
+                            Log.d(TAG, "Review " + i + " created_at: " + createdAt);
+                        } else {
+                            Log.w(TAG, "Review " + i + " has no created_at field!");
+                        }
+                        
+                        String updatedAt = null;
+                        if (json.has("updated_at") && !json.isNull("updated_at")) {
+                            updatedAt = json.getString("updated_at");
+                            Log.d(TAG, "Review " + i + " updated_at: " + updatedAt);
+                        }
                         
                         Review review = new Review(
                             json.getString("id"),
@@ -1034,18 +1059,40 @@ public class SupabaseClient {
                             json.getString("release_id"),
                             (float) json.getDouble("rating"),
                             json.getString("text"),
-                            json.getString("created_at"),
-                            json.getString("updated_at")
+                            createdAt,
+                            updatedAt
                         );
+                        
+                        Log.d(TAG, "Review object created with date: " + review.getCreatedAt());
                         reviews.add(review);
                     }
                     
                     new Handler(Looper.getMainLooper()).post(() -> callback.onSuccess(reviews));
                 } else {
+                    // Получаем сообщение об ошибке из ответа
+                    String errorMessage = "";
+                    try {
+                        BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(connection.getErrorStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+                        reader.close();
+                        errorMessage = response.toString();
+                        Log.e(TAG, "Error response: " + errorMessage);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Could not read error stream", e);
+                    }
+                    
+                    final String finalErrorMessage = errorMessage;
                     new Handler(Looper.getMainLooper()).post(() -> 
-                        callback.onError("Failed to get reviews. Response code: " + responseCode));
+                        callback.onError("Failed to get reviews. Response code: " + responseCode + 
+                                        (finalErrorMessage.isEmpty() ? "" : " - " + finalErrorMessage)));
                 }
             } catch (Exception e) {
+                Log.e(TAG, "Error getting reviews", e);
                 new Handler(Looper.getMainLooper()).post(() -> 
                     callback.onError("Error getting reviews: " + e.getMessage()));
             }
@@ -1093,23 +1140,30 @@ public class SupabaseClient {
                 Response response = client.newCall(request).execute();
                 
                 String responseBody = response.body() != null ? response.body().string() : "";
+                Log.d(TAG, "Review creation response: " + responseBody);
                 
                 if (response.isSuccessful() && !responseBody.isEmpty()) {
                     // Парсим ответ
-                    // Проверяем, является ли ответ массивом
-                    if (responseBody.startsWith("[")) {
-                        // Если это массив, извлекаем первый элемент
-                        Type listType = new TypeToken<List<Review>>(){}.getType();
-                        List<Review> reviews = gson.fromJson(responseBody, listType);
-                        if (reviews != null && !reviews.isEmpty()) {
-                            callback.onSuccess(reviews.get(0));
-                        } else {
-                            callback.onError("Empty review data received");
-                        }
-                    } else {
-                        // Если это не массив, обрабатываем как раньше
-                        Review review = gson.fromJson(responseBody, Review.class);
+                    JSONArray jsonArray = new JSONArray(responseBody);
+                    if (jsonArray.length() > 0) {
+                        JSONObject json = jsonArray.getJSONObject(0);
+                        String createdAt = json.getString("created_at");
+                        Log.d(TAG, "Created at: " + createdAt);
+                        
+                        Review review = new Review(
+                            json.getString("id"),
+                            json.getString("user_id"),
+                            json.getString("user_name"),
+                            json.optString("user_avatar_url", null),
+                            json.getString("release_id"),
+                            (float) json.getDouble("rating"),
+                            json.getString("text"),
+                            createdAt,
+                            json.getString("updated_at")
+                        );
                         callback.onSuccess(review);
+                    } else {
+                        callback.onError("Empty review data received");
                     }
                 } else {
                     String errorMessage = parseErrorMessage(responseBody, response.code());
@@ -1154,5 +1208,221 @@ public class SupabaseClient {
             return null;
         }
         return sessionManager.getUserAvatarUrl();
+    }
+
+    /**
+     * Добавляет новый сториз
+     */
+    public void addStory(String text, Uri imageUri, Context context, String userId, String token, Date expiresAt, StoryCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Сначала загружаем изображение
+                String imageUrl = uploadImageToStorage(imageUri, context, token, "stories", "story_" + System.currentTimeMillis() + ".jpg");
+                
+                if (imageUrl == null) {
+                    callback.onError("Failed to upload image");
+                    return;
+                }
+                
+                // Затем создаем запись о сторизе
+                createStoryRecord(text, imageUrl, userId, token, expiresAt, callback);
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error during story addition", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Создает запись о сторизе в базе данных
+     */
+    private void createStoryRecord(String text, String imageUrl, String userId, String token, Date expiresAt, StoryCallback callback) {
+        try {
+            // Создаем JSON с данными сториза
+            JsonObject storyJson = new JsonObject();
+            storyJson.addProperty("text", text);
+            storyJson.addProperty("image_url", imageUrl);
+            storyJson.addProperty("user_id", userId);
+            
+            // Форматируем дату в ISO 8601
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US);
+            sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+            storyJson.addProperty("expires_at", sdf.format(expiresAt));
+            
+            // Формируем запрос
+            String apiUrl = supabaseUrl + "/rest/v1/stories";
+            
+            RequestBody requestBody = RequestBody.create(storyJson.toString(), JSON);
+            
+            Request request = new Request.Builder()
+                    .url(apiUrl)
+                    .addHeader("apikey", supabaseKey)
+                    .addHeader("Authorization", "Bearer " + token)
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Prefer", "return=representation")
+                    .post(requestBody)
+                    .build();
+            
+            // Отправляем запрос
+            Response response = client.newCall(request).execute();
+            
+            String responseBody = response.body() != null ? response.body().string() : "";
+            
+            if (response.isSuccessful() && !responseBody.isEmpty()) {
+                // Парсим ответ в объект из пакета models
+                com.example.ratertune.models.Story modelStory = gson.fromJson(responseBody, com.example.ratertune.models.Story.class);
+                callback.onSuccess(modelStory);
+            } else {
+                String errorMessage = parseErrorMessage(responseBody, response.code());
+                callback.onError("Failed to create story record: " + errorMessage);
+            }
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating story record", e);
+            callback.onError("Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Получает список сторизов пользователя
+     */
+    public void getUserStories(String userId, String token, StoriesListCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Формируем запрос
+                String apiUrl = supabaseUrl + "/rest/v1/stories?user_id=eq." + userId + "&expires_at=gt.now()";
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+                
+                // Отправляем запрос
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful() && !responseBody.isEmpty()) {
+                    // Парсим ответ
+                    Type listType = new TypeToken<List<com.example.ratertune.models.Story>>(){}.getType();
+                    List<com.example.ratertune.models.Story> stories = gson.fromJson(responseBody, listType);
+                    callback.onSuccess(stories);
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    callback.onError("Failed to load stories: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading stories", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    public void getLatestReviews(String token, int limit, ReviewsCallback callback) {
+        new Thread(() -> {
+            try {
+                String url = supabaseUrl + "/rest/v1/reviews?order=created_at.desc&limit=" + limit;
+                Log.d(TAG, "Getting latest reviews, limit: " + limit);
+                
+                URL apiUrl = new URL(url);
+                HttpURLConnection connection = (HttpURLConnection) apiUrl.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setRequestProperty("apikey", supabaseKey);
+                connection.setRequestProperty("Authorization", "Bearer " + token);
+                connection.setRequestProperty("Content-Type", "application/json");
+                connection.setRequestProperty("Prefer", "return=representation");
+
+                int responseCode = connection.getResponseCode();
+                Log.d(TAG, "Latest reviews API response code: " + responseCode);
+                
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    String responseStr = response.toString();
+                    Log.d(TAG, "Latest reviews API raw response: " + responseStr);
+                    
+                    JSONArray jsonArray = new JSONArray(responseStr);
+                    List<Review> reviews = new ArrayList<>();
+                    
+                    Log.d(TAG, "Got " + jsonArray.length() + " latest reviews");
+                    
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject json = jsonArray.getJSONObject(i);
+                        
+                        String createdAt = null;
+                        if (json.has("created_at") && !json.isNull("created_at")) {
+                            createdAt = json.getString("created_at");
+                        }
+                        
+                        String updatedAt = null;
+                        if (json.has("updated_at") && !json.isNull("updated_at")) {
+                            updatedAt = json.getString("updated_at");
+                        }
+                        
+                        Review review = new Review(
+                            json.getString("id"),
+                            json.getString("user_id"),
+                            json.getString("user_name"),
+                            json.optString("user_avatar_url", null),
+                            json.getString("release_id"),
+                            (float) json.getDouble("rating"),
+                            json.getString("text"),
+                            createdAt,
+                            updatedAt
+                        );
+                        
+                        reviews.add(review);
+                    }
+                    
+                    new Handler(Looper.getMainLooper()).post(() -> callback.onSuccess(reviews));
+                } else {
+                    String errorMessage = "";
+                    try {
+                        BufferedReader reader = new BufferedReader(
+                                new InputStreamReader(connection.getErrorStream()));
+                        StringBuilder response = new StringBuilder();
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            response.append(line);
+                        }
+                        reader.close();
+                        errorMessage = response.toString();
+                    } catch (Exception e) {
+                        Log.e(TAG, "Could not read error stream", e);
+                    }
+                    
+                    final String finalErrorMessage = errorMessage;
+                    new Handler(Looper.getMainLooper()).post(() -> 
+                        callback.onError("Failed to get latest reviews. Response code: " + responseCode + 
+                                        (finalErrorMessage.isEmpty() ? "" : " - " + finalErrorMessage)));
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting latest reviews", e);
+                new Handler(Looper.getMainLooper()).post(() -> 
+                    callback.onError("Error getting latest reviews: " + e.getMessage()));
+            }
+        }).start();
     }
 }

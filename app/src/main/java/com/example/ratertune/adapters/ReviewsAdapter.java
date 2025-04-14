@@ -1,5 +1,6 @@
 package com.example.ratertune.adapters;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,7 +10,9 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.ratertune.R;
 import com.example.ratertune.models.Review;
+import com.example.ratertune.utils.PicassoCache;
 import com.squareup.picasso.Picasso;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -62,30 +65,21 @@ public class ReviewsAdapter extends RecyclerView.Adapter<ReviewsAdapter.ReviewVi
             ratingText.setText(String.format(Locale.getDefault(), "%.1f", review.getRating()));
             reviewText.setText(review.getText());
             
-            // Загрузка аватара
+            // Загрузка аватара с кэшированием
             if (review.getUserAvatarUrl() != null && !review.getUserAvatarUrl().isEmpty()) {
-                Picasso.get()
-                        .load(review.getUserAvatarUrl())
-                        .placeholder(R.drawable.ic_profile)
-                        .error(R.drawable.ic_profile)
+                Picasso picasso = PicassoCache.getInstance(itemView.getContext());
+                picasso.load(review.getUserAvatarUrl())
+                        .noFade()
+                        .noPlaceholder()
                         .into(avatarImage);
             } else {
                 avatarImage.setImageResource(R.drawable.ic_profile);
             }
             
-            // Форматирование даты
-            try {
-                SimpleDateFormat inputFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault());
-                SimpleDateFormat outputFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault());
-                Date date = inputFormat.parse(review.getCreatedAt());
-                if (date != null) {
-                    dateText.setText(outputFormat.format(date));
-                } else {
-                    dateText.setText("Дата неизвестна");
-                }
-            } catch (Exception e) {
-                dateText.setText("Дата неизвестна");
-            }
+            // Используем метод getFormattedDate() из модели Review
+            String formattedDate = review.getFormattedDate();
+            Log.d("ReviewsAdapter", "Using formatted date from model: " + formattedDate);
+            dateText.setText(formattedDate);
         }
     }
 } 

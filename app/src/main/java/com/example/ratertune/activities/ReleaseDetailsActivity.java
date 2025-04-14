@@ -190,31 +190,47 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
     }
 
     private void loadReviews() {
-        // Получаем токен из SessionManager
+        if (releaseId == null || releaseId.isEmpty()) {
+            Toast.makeText(this, "ID релиза не найден", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         String token = sessionManager.getAccessToken();
-        
+        if (token == null || token.isEmpty()) {
+            Toast.makeText(this, "Ошибка авторизации", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         supabaseClient.getReviews(releaseId, token, new SupabaseClient.ReviewsCallback() {
             @Override
-            public void onSuccess(List<Review> reviews) {
+            public void onSuccess(List<Review> reviewsList) {
                 runOnUiThread(() -> {
-                    if (reviews.isEmpty()) {
+                    if (reviewsList.isEmpty()) {
                         noReviewsText.setVisibility(View.VISIBLE);
                         reviewsRecyclerView.setVisibility(View.GONE);
                     } else {
                         noReviewsText.setVisibility(View.GONE);
                         reviewsRecyclerView.setVisibility(View.VISIBLE);
-                        // Создаем новый адаптер с обновленным списком
-                        reviewsAdapter = new ReviewsAdapter(reviews);
+                        
+                        // Логируем данные о рецензиях
+                        for (Review review : reviewsList) {
+                            android.util.Log.d("ReleaseDetailsActivity", 
+                                "Review date: " + review.getCreatedAt() + 
+                                ", formatted: " + review.getFormattedDate());
+                        }
+                        
+                        reviewsAdapter = new ReviewsAdapter(reviewsList);
                         reviewsRecyclerView.setAdapter(reviewsAdapter);
                     }
                 });
             }
-            
+
             @Override
             public void onError(String error) {
                 runOnUiThread(() -> {
-                    Toast.makeText(ReleaseDetailsActivity.this, 
-                        "Ошибка загрузки рецензий: " + error, Toast.LENGTH_LONG).show();
+                    Toast.makeText(ReleaseDetailsActivity.this, "Ошибка загрузки рецензий: " + error, Toast.LENGTH_SHORT).show();
+                    noReviewsText.setVisibility(View.VISIBLE);
+                    reviewsRecyclerView.setVisibility(View.GONE);
                 });
             }
         });

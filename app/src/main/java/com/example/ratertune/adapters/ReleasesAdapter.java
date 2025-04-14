@@ -1,5 +1,6 @@
 package com.example.ratertune.adapters;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ratertune.R;
 import com.example.ratertune.models.Release;
+import com.example.ratertune.utils.PicassoCache;
 import com.squareup.picasso.Picasso;
 
 import java.util.List;
@@ -18,14 +20,16 @@ import java.util.List;
 public class ReleasesAdapter extends RecyclerView.Adapter<ReleasesAdapter.ReleaseViewHolder> {
     private final List<Release> releases;
     private final OnReleaseClickListener listener;
+    private final Context context;
 
     public interface OnReleaseClickListener {
         void onReleaseClick(Release release);
     }
 
-    public ReleasesAdapter(List<Release> releases, OnReleaseClickListener listener) {
+    public ReleasesAdapter(List<Release> releases, OnReleaseClickListener listener, Context context) {
         this.releases = releases;
         this.listener = listener;
+        this.context = context;
     }
 
     @NonNull
@@ -33,12 +37,16 @@ public class ReleasesAdapter extends RecyclerView.Adapter<ReleasesAdapter.Releas
     public ReleaseViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_release, parent, false);
-        return new ReleaseViewHolder(view);
+        return new ReleaseViewHolder(view, context);
     }
 
     @Override
     public void onBindViewHolder(@NonNull ReleaseViewHolder holder, int position) {
         Release release = releases.get(position);
+        // Предварительно загружаем следующее изображение
+        if (position + 1 < releases.size()) {
+            PicassoCache.preloadImage(holder.itemView.getContext(), releases.get(position + 1).getImageUrl());
+        }
         holder.bind(release, listener);
     }
 
@@ -48,35 +56,29 @@ public class ReleasesAdapter extends RecyclerView.Adapter<ReleasesAdapter.Releas
     }
 
     static class ReleaseViewHolder extends RecyclerView.ViewHolder {
-        ImageView imageView;
-        TextView titleTextView;
-        TextView artistTextView;
-        TextView ratingTextView;
+        private final ImageView imageView;
+        private final TextView titleView;
+        private final TextView artistView;
+        private final Picasso picasso;
 
-        ReleaseViewHolder(@NonNull View itemView) {
+        ReleaseViewHolder(@NonNull View itemView, Context context) {
             super(itemView);
             imageView = itemView.findViewById(R.id.releaseImage);
-            titleTextView = itemView.findViewById(R.id.releaseTitle);
-            artistTextView = itemView.findViewById(R.id.releaseArtist);
-            ratingTextView = itemView.findViewById(R.id.releaseRating);
+            titleView = itemView.findViewById(R.id.releaseTitle);
+            artistView = itemView.findViewById(R.id.releaseArtist);
+            picasso = PicassoCache.getInstance(context);
         }
 
         void bind(final Release release, final OnReleaseClickListener listener) {
-            titleTextView.setText(release.getTitle());
-            artistTextView.setText(release.getArtist());
-            
-            // Показываем рейтинг, если он установлен
-            float rating = release.getRating();
-            ratingTextView.setText(String.format("%.1f", rating));
-
-            // Загрузка изображения с помощью Picasso
-            Picasso.get()
-                    .load(release.getImageUrl())
-                    .placeholder(R.drawable.ic_album_placeholder)
-                    .error(R.drawable.ic_album_placeholder)
+            // Загрузка изображения с помощью кэшированного Picasso
+            picasso.load(release.getImageUrl())
+                    .noFade() // Отключаем анимацию загрузки
+                    .noPlaceholder() // Не показываем placeholder
                     .into(imageView);
-                    
-            // Обработка клика на элемент
+            
+            titleView.setText(release.getTitle());
+            artistView.setText(release.getArtist());
+            
             itemView.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onReleaseClick(release);

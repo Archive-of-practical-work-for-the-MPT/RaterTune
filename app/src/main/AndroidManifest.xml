@@ -36,6 +36,12 @@
         <activity
             android:name=".activities.ReleaseDetailsActivity"
             android:exported="false" />
+        <activity
+            android:name=".activities.AddStoryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".activities.StoryViewActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

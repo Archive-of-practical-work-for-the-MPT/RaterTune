@@ -2,77 +2,156 @@ package com.example.ratertune.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.example.ratertune.R;
 import com.example.ratertune.adapters.ReleasesAdapter;
+import com.example.ratertune.adapters.ReviewsAdapter;
+import com.example.ratertune.adapters.StoriesAdapter;
 import com.example.ratertune.api.SupabaseClient;
+import com.example.ratertune.api.StoriesListCallback;
 import com.example.ratertune.models.Release;
+import com.example.ratertune.models.Review;
+import com.example.ratertune.models.Story;
+import com.example.ratertune.utils.PicassoCache;
 import com.example.ratertune.utils.SessionManager;
 import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements ReleasesAdapter.OnReleaseClickListener {
+    private static final String TAG = "MainActivity";
+    
+    private RecyclerView storiesRecyclerView;
+    private RecyclerView releasesRecyclerView;
+    private RecyclerView latestReviewsRecyclerView;
+    private TextView noLatestReviewsText;
+    
+    private SupabaseClient supabaseClient;
     private SessionManager sessionManager;
+    
+    private List<Story> storiesList;
+    private StoriesAdapter storiesAdapter;
+    
     private List<Release> releasesList;
     private ReleasesAdapter releasesAdapter;
-    private SupabaseClient supabaseClient;
+    
+    private List<Review> latestReviewsList;
+    private ReviewsAdapter latestReviewsAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        sessionManager = new SessionManager(this);
-        supabaseClient = SupabaseClient.getInstance();
-        
-        // Проверяем, есть ли активная сессия
-        if (!sessionManager.isLoggedIn()) {
-            // Если нет, переходим на экран авторизации
-            startActivity(new Intent(this, AuthActivity.class));
-            finish();
-            return;
-        }
-
         setContentView(R.layout.activity_main);
-
-        // Инициализация компонентов
-        RecyclerView releasesRecyclerView = findViewById(R.id.releasesRecyclerView);
-        ImageButton profileButton = findViewById(R.id.profileButton);
-        ImageButton addReleaseButton = findViewById(R.id.addReleaseButton);
-
-        // Настройка RecyclerView
-        releasesList = new ArrayList<>();
-        releasesAdapter = new ReleasesAdapter(releasesList, this);
         
-        // Устанавливаем сетку 2 колонки
+        // Инициализация SupabaseClient и SessionManager
+        supabaseClient = SupabaseClient.getInstance();
+        sessionManager = new SessionManager(this);
+        supabaseClient.setSessionManager(sessionManager);
+        
+        // Инициализация UI элементов
+        storiesRecyclerView = findViewById(R.id.storiesRecycler);
+        releasesRecyclerView = findViewById(R.id.releasesRecyclerView);
+        latestReviewsRecyclerView = findViewById(R.id.latestReviewsRecyclerView);
+        noLatestReviewsText = findViewById(R.id.noLatestReviewsText);
+        
+        ImageButton profileButton = findViewById(R.id.profileButton);
+        ImageButton addStoryButton = findViewById(R.id.addStoryButton);
+        ImageButton addReleaseButton = findViewById(R.id.addReleaseButton);
+        
+        profileButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
+            startActivity(intent);
+        });
+        
+        addStoryButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, AddStoryActivity.class);
+            startActivity(intent);
+        });
+        
+        addReleaseButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, AddReleaseActivity.class);
+            startActivity(intent);
+        });
+        
+        // Настройка RecyclerView для сторизов
+        storiesList = new ArrayList<>();
+        storiesAdapter = new StoriesAdapter(storiesList, this::onStoryClick, this);
+        LinearLayoutManager storiesLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
+        storiesRecyclerView.setLayoutManager(storiesLayoutManager);
+        storiesRecyclerView.setAdapter(storiesAdapter);
+        
+        // Настройка RecyclerView для релизов
+        releasesList = new ArrayList<>();
+        releasesAdapter = new ReleasesAdapter(releasesList, this, this);
         GridLayoutManager layoutManager = new GridLayoutManager(this, 2);
         releasesRecyclerView.setLayoutManager(layoutManager);
         releasesRecyclerView.setAdapter(releasesAdapter);
-
-        // Обработчики нажатий
-        profileButton.setOnClickListener(v -> {
-            startActivity(new Intent(this, ProfileActivity.class));
-        });
-
-        addReleaseButton.setOnClickListener(v -> {
-            startActivity(new Intent(this, AddReleaseActivity.class));
-        });
         
-        // Загружаем альбомы пользователя
+        // Настройка RecyclerView для последних рецензий
+        latestReviewsList = new ArrayList<>();
+        latestReviewsAdapter = new ReviewsAdapter(latestReviewsList);
+        LinearLayoutManager reviewsLayoutManager = new LinearLayoutManager(this);
+        latestReviewsRecyclerView.setLayoutManager(reviewsLayoutManager);
+        latestReviewsRecyclerView.setAdapter(latestReviewsAdapter);
+        
+        // Загрузка данных
+        loadUserStories();
         loadUserReleases();
+        loadLatestReviews();
     }
     
     @Override
     protected void onResume() {
         super.onResume();
-        // Обновляем список альбомов при возврате на экран
+        // Обновляем данные при возвращении на экран
+        loadUserStories();
         loadUserReleases();
+        loadLatestReviews();
     }
     
-    // Загружает альбомы пользователя из Supabase
+    private void onStoryClick(Story story) {
+        Intent intent = new Intent(MainActivity.this, StoryViewActivity.class);
+        intent.putExtra("id", story.getId());
+        intent.putExtra("imageUrl", story.getImageUrl());
+        intent.putExtra("text", story.getText());
+        startActivity(intent);
+    }
+    
+    private void loadUserStories() {
+        String userId = sessionManager.getUserId();
+        String token = sessionManager.getAccessToken();
+        
+        supabaseClient.getUserStories(userId, token, new StoriesListCallback() {
+            @Override
+            public void onSuccess(List<Story> stories) {
+                runOnUiThread(() -> {
+                    storiesList.clear();
+                    storiesList.addAll(stories);
+                    storiesAdapter.notifyDataSetChanged();
+                    
+                    // Предварительно загружаем все изображения в кэш
+                    for (Story story : stories) {
+                        PicassoCache.preloadImage(MainActivity.this, story.getImageUrl());
+                    }
+                });
+            }
+            
+            @Override
+            public void onError(String errorMessage) {
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Ошибка загрузки сторизов: " + errorMessage, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+    
     private void loadUserReleases() {
         String userId = sessionManager.getUserId();
         String token = sessionManager.getAccessToken();
@@ -105,6 +184,11 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
                 runOnUiThread(() -> {
                     releasesAdapter.notifyDataSetChanged();
                     
+                    // Предварительно загружаем все изображения в кэш
+                    for (Release release : releasesList) {
+                        PicassoCache.preloadImage(MainActivity.this, release.getImageUrl());
+                    }
+                    
                     if (releasesList.isEmpty()) {
                         Toast.makeText(MainActivity.this, "У вас пока нет добавленных альбомов", Toast.LENGTH_SHORT).show();
                     }
@@ -121,10 +205,57 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         });
     }
     
+    private void loadLatestReviews() {
+        String token = sessionManager.getAccessToken();
+        
+        if (token == null) {
+            Toast.makeText(this, "Ошибка авторизации", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Получаем последние 4 рецензии
+        supabaseClient.getLatestReviews(token, 4, new SupabaseClient.ReviewsCallback() {
+            @Override
+            public void onSuccess(List<Review> reviews) {
+                runOnUiThread(() -> {
+                    latestReviewsList.clear();
+                    latestReviewsList.addAll(reviews);
+                    
+                    if (reviews.isEmpty()) {
+                        noLatestReviewsText.setVisibility(View.VISIBLE);
+                        latestReviewsRecyclerView.setVisibility(View.GONE);
+                    } else {
+                        noLatestReviewsText.setVisibility(View.GONE);
+                        latestReviewsRecyclerView.setVisibility(View.VISIBLE);
+                        
+                        // Предварительно загружаем аватары пользователей в кэш
+                        for (Review review : reviews) {
+                            if (review.getUserAvatarUrl() != null && !review.getUserAvatarUrl().isEmpty()) {
+                                PicassoCache.preloadImage(MainActivity.this, review.getUserAvatarUrl());
+                            }
+                        }
+                        
+                        latestReviewsAdapter.notifyDataSetChanged();
+                        Log.d(TAG, "Loaded " + reviews.size() + " latest reviews");
+                    }
+                });
+            }
+            
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Ошибка загрузки рецензий: " + error, Toast.LENGTH_SHORT).show();
+                    noLatestReviewsText.setVisibility(View.VISIBLE);
+                    latestReviewsRecyclerView.setVisibility(View.GONE);
+                });
+            }
+        });
+    }
+    
+    // Обработка нажатия на релиз
     @Override
     public void onReleaseClick(Release release) {
-        // Открываем экран с деталями альбома
-        Intent intent = new Intent(this, ReleaseDetailsActivity.class);
+        Intent intent = new Intent(MainActivity.this, ReleaseDetailsActivity.class);
         intent.putExtra("id", release.getId());
         intent.putExtra("title", release.getTitle());
         intent.putExtra("artist", release.getArtist());
