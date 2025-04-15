@@ -1276,9 +1276,26 @@ public class SupabaseClient {
             String responseBody = response.body() != null ? response.body().string() : "";
             
             if (response.isSuccessful() && !responseBody.isEmpty()) {
-                // Парсим ответ в объект из пакета models
-                com.example.ratertune.models.Story modelStory = gson.fromJson(responseBody, com.example.ratertune.models.Story.class);
-                callback.onSuccess(modelStory);
+                try {
+                    // Проверяем, является ли ответ массивом
+                    if (responseBody.trim().startsWith("[")) {
+                        // Парсим ответ как массив и берем первый элемент
+                        Type listType = new TypeToken<List<com.example.ratertune.models.Story>>(){}.getType();
+                        List<com.example.ratertune.models.Story> stories = gson.fromJson(responseBody, listType);
+                        if (stories != null && !stories.isEmpty()) {
+                            callback.onSuccess(stories.get(0));
+                        } else {
+                            callback.onError("Empty response array");
+                        }
+                    } else {
+                        // Парсим ответ как одиночный объект
+                        com.example.ratertune.models.Story modelStory = gson.fromJson(responseBody, com.example.ratertune.models.Story.class);
+                        callback.onSuccess(modelStory);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing story response", e);
+                    callback.onError("Error parsing response: " + e.getMessage());
+                }
             } else {
                 String errorMessage = parseErrorMessage(responseBody, response.code());
                 callback.onError("Failed to create story record: " + errorMessage);
@@ -1757,6 +1774,74 @@ public class SupabaseClient {
                 
             } catch (Exception e) {
                 Log.e(TAG, "Error loading release", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Интерфейс для обратного вызова получения среднего рейтинга
+     */
+    public interface AverageRatingCallback {
+        void onSuccess(float averageRating, int reviewsCount);
+        void onError(String errorMessage);
+    }
+
+    /**
+     * Вычисляет средний рейтинг релиза на основе рецензий
+     * 
+     * @param releaseId ID релиза
+     * @param token токен доступа
+     * @param callback обратный вызов с результатом операции
+     */
+    public void calculateAverageRating(String releaseId, String token, AverageRatingCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Формируем запрос на получение всех рецензий для релиза
+                String apiUrl = supabaseUrl + "/rest/v1/reviews?release_id=eq." + releaseId;
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+                
+                // Отправляем запрос
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful() && !responseBody.isEmpty()) {
+                    // Парсим ответ
+                    Type listType = new TypeToken<List<Review>>(){}.getType();
+                    List<Review> reviews = gson.fromJson(responseBody, listType);
+                    
+                    if (reviews != null && !reviews.isEmpty()) {
+                        // Вычисляем средний рейтинг
+                        float sum = 0;
+                        for (Review review : reviews) {
+                            sum += review.getRating();
+                        }
+                        float averageRating = sum / reviews.size();
+                        callback.onSuccess(averageRating, reviews.size());
+                    } else {
+                        // Если рецензий нет, рейтинг 0
+                        callback.onSuccess(0, 0);
+                    }
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    callback.onError("Failed to load reviews: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error calculating average rating", e);
                 callback.onError("Error: " + e.getMessage());
             }
         }).start();

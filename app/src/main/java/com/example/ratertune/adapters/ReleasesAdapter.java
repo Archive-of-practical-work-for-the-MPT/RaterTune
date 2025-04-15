@@ -59,6 +59,7 @@ public class ReleasesAdapter extends RecyclerView.Adapter<ReleasesAdapter.Releas
         private final ImageView imageView;
         private final TextView titleView;
         private final TextView artistView;
+        private final TextView ratingView;
         private final Picasso picasso;
 
         ReleaseViewHolder(@NonNull View itemView, Context context) {
@@ -66,18 +67,28 @@ public class ReleasesAdapter extends RecyclerView.Adapter<ReleasesAdapter.Releas
             imageView = itemView.findViewById(R.id.releaseImage);
             titleView = itemView.findViewById(R.id.releaseTitle);
             artistView = itemView.findViewById(R.id.releaseArtist);
+            ratingView = itemView.findViewById(R.id.releaseRating);
             picasso = PicassoCache.getInstance(context);
         }
 
         void bind(final Release release, final OnReleaseClickListener listener) {
+            // Очищаем изображение перед новой загрузкой, чтобы избежать смешивания
+            imageView.setImageDrawable(null);
+            
             // Загрузка изображения с помощью кэшированного Picasso
             picasso.load(release.getImageUrl())
                     .noFade() // Отключаем анимацию загрузки
                     .noPlaceholder() // Не показываем placeholder
+                    .tag(release.getId()) // Добавляем тег для уникальной идентификации
                     .into(imageView);
             
             titleView.setText(release.getTitle());
             artistView.setText(release.getArtist());
+            
+            // Отображение рейтинга всегда, даже если он равен нулю
+            String rating = String.format("%.1f", release.getRating());
+            ratingView.setText(rating);
+            ratingView.setVisibility(View.VISIBLE);
             
             itemView.setOnClickListener(v -> {
                 if (listener != null) {

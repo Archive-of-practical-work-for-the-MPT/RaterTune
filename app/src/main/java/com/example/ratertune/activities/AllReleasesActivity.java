@@ -2,6 +2,7 @@ package com.example.ratertune.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -16,6 +17,7 @@ import com.example.ratertune.R;
 import com.example.ratertune.adapters.ReleasesAdapter;
 import com.example.ratertune.api.SupabaseClient;
 import com.example.ratertune.models.Release;
+import com.example.ratertune.utils.PicassoCache;
 import com.example.ratertune.utils.SessionManager;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -113,7 +115,7 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
                             release.getTitle(),
                             release.getArtist(),
                             release.getCoverUrl(),
-                            0.0f,
+                            0.0f, // Временный рейтинг, будет обновлен
                             release.getReleaseDate()
                     );
                     releasesList.add(modelRelease);
@@ -122,6 +124,28 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
                 // Сортируем и обновляем UI в основном потоке
                 runOnUiThread(() -> {
                     sortReleases();
+                    
+                    // Для каждого релиза запрашиваем средний рейтинг
+                    for (int i = 0; i < releasesList.size(); i++) {
+                        final int position = i;
+                        String releaseId = releasesList.get(i).getId();
+                        supabaseClient.calculateAverageRating(releaseId, token, new SupabaseClient.AverageRatingCallback() {
+                            @Override
+                            public void onSuccess(float averageRating, int reviewsCount) {
+                                // Обновляем рейтинг в модели и в адаптере
+                                runOnUiThread(() -> {
+                                    releasesList.get(position).setRating(averageRating);
+                                    releasesAdapter.notifyItemChanged(position);
+                                });
+                            }
+                            
+                            @Override
+                            public void onError(String errorMessage) {
+                                // Просто логируем ошибку, не показываем пользователю
+                                Log.e("AllReleasesActivity", "Error calculating rating for release " + releaseId + ": " + errorMessage);
+                            }
+                        });
+                    }
                 });
             }
             
@@ -273,5 +297,16 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    protected void onDestroy() {
+        // Отменяем все активные загрузки для предотвращения утечек памяти
+        if (releasesList != null) {
+            for (Release release : releasesList) {
+                PicassoCache.cancelTag(release.getId());
+            }
+        }
+        super.onDestroy();
     }
 } 

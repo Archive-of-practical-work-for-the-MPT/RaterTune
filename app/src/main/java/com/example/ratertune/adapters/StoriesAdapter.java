@@ -66,10 +66,14 @@ public class StoriesAdapter extends RecyclerView.Adapter<StoriesAdapter.StoryVie
         }
 
         void bind(final Story story, final OnStoryClickListener listener) {
+            // Очищаем изображение перед новой загрузкой, чтобы избежать смешивания
+            imageView.setImageDrawable(null);
+            
             // Загрузка изображения с помощью кэшированного Picasso
             picasso.load(story.getImageUrl())
                     .noFade() // Отключаем анимацию загрузки
                     .noPlaceholder() // Не показываем placeholder
+                    .tag(story.getId()) // Добавляем тег для уникальной идентификации
                     .into(imageView);
             
             // Устанавливаем состояние просмотра

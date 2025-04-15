@@ -122,6 +122,31 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         loadLatestReviews();
     }
     
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // Отменяем загрузки изображений с тегами "main_activity" при уходе с экрана
+        PicassoCache.cancelTag("main_activity");
+    }
+    
+    @Override
+    protected void onDestroy() {
+        // Отменяем все активные загрузки для предотвращения утечек памяти
+        if (releasesList != null) {
+            for (Release release : releasesList) {
+                PicassoCache.cancelTag(release.getId());
+            }
+        }
+        
+        if (storiesList != null) {
+            for (Story story : storiesList) {
+                PicassoCache.cancelTag(story.getId());
+            }
+        }
+        
+        super.onDestroy();
+    }
+    
     private void onStoryClick(Story story) {
         // Отмечаем сториз как просмотренный
         String userId = sessionManager.getUserId();
@@ -237,8 +262,8 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
                 // Конвертируем SupabaseClient.Release в нашу модель Release
                 releasesList.clear();
                 
+                // Сначала добавляем все релизы с временными оценками 0
                 for (SupabaseClient.Release release : releases) {
-                    // Используем 0.0f как временную оценку, так как в текущей реализации нет оценок
                     Release modelRelease = new Release(
                             String.valueOf(release.getId()),
                             release.getTitle(),
@@ -254,22 +279,34 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
                 runOnUiThread(() -> {
                     releasesAdapter.notifyDataSetChanged();
                     
-                    // Предварительно загружаем все изображения в кэш
-                    for (Release release : releasesList) {
-                        PicassoCache.preloadImage(MainActivity.this, release.getImageUrl());
-                    }
-                    
-                    if (releasesList.isEmpty()) {
-                        Toast.makeText(MainActivity.this, "Пока нет добавленных альбомов", Toast.LENGTH_SHORT).show();
+                    // Для каждого релиза запрашиваем средний рейтинг
+                    for (int i = 0; i < releasesList.size(); i++) {
+                        final int position = i;
+                        String releaseId = releasesList.get(i).getId();
+                        supabaseClient.calculateAverageRating(releaseId, token, new SupabaseClient.AverageRatingCallback() {
+                            @Override
+                            public void onSuccess(float averageRating, int reviewsCount) {
+                                // Обновляем рейтинг в модели и в адаптере
+                                runOnUiThread(() -> {
+                                    releasesList.get(position).setRating(averageRating);
+                                    releasesAdapter.notifyItemChanged(position);
+                                });
+                            }
+                            
+                            @Override
+                            public void onError(String errorMessage) {
+                                // Просто логируем ошибку, не показываем пользователю
+                                Log.e(TAG, "Error calculating rating for release " + releaseId + ": " + errorMessage);
+                            }
+                        });
                     }
                 });
             }
             
             @Override
             public void onError(String errorMessage) {
-                // Обработка ошибки в основном потоке
                 runOnUiThread(() -> {
-                    Toast.makeText(MainActivity.this, "Ошибка загрузки альбомов: " + errorMessage, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Ошибка загрузки релизов: " + errorMessage, Toast.LENGTH_SHORT).show();
                 });
             }
         });

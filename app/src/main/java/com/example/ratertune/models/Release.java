@@ -5,7 +5,7 @@ public class Release {
     private final String title;
     private final String artist;
     private final String imageUrl;
-    private final float rating;
+    private float rating;
     private final String releaseDate;
 
     public Release(String id, String title, String artist, String imageUrl, float rating, String releaseDate) {
@@ -35,6 +35,10 @@ public class Release {
 
     public float getRating() {
         return rating;
+    }
+
+    public void setRating(float rating) {
+        this.rating = rating;
     }
 
     public String getReleaseDate() {

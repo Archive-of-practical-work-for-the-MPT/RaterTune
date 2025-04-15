@@ -14,6 +14,7 @@ import com.example.ratertune.R;
 import com.example.ratertune.adapters.ReviewsAdapter;
 import com.example.ratertune.api.SupabaseClient;
 import com.example.ratertune.models.Review;
+import com.example.ratertune.utils.PicassoCache;
 import com.example.ratertune.utils.SessionManager;
 import com.example.ratertune.widget.SquareImageView;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
@@ -165,7 +166,7 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
                     // Скрываем bottom sheet
                     hideAddReviewBottomSheet();
                     
-                    // Обновляем список рецензий
+                    // Обновляем список рецензий и средний рейтинг
                     loadReviews();
                     
                     // Показываем сообщение об успехе
@@ -201,6 +202,27 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
             return;
         }
 
+        // Сначала вычисляем средний рейтинг
+        supabaseClient.calculateAverageRating(releaseId, token, new SupabaseClient.AverageRatingCallback() {
+            @Override
+            public void onSuccess(float averageRating, int reviewsCount) {
+                runOnUiThread(() -> {
+                    // Обновляем текст рейтинга
+                    TextView ratingText = findViewById(R.id.ratingText);
+                    ratingText.setText(String.format("%.1f", averageRating));
+                });
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                runOnUiThread(() -> {
+                    Toast.makeText(ReleaseDetailsActivity.this, 
+                        "Ошибка расчета рейтинга: " + errorMessage, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+
+        // Затем загружаем рецензии
         supabaseClient.getReviews(releaseId, token, new SupabaseClient.ReviewsCallback() {
             @Override
             public void onSuccess(List<Review> reviewsList) {
@@ -234,5 +256,12 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        // Отменяем активные загрузки изображений
+        PicassoCache.cancelTag(releaseId);
+        super.onDestroy();
     }
 } 
