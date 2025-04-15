@@ -20,9 +20,19 @@ import java.util.Locale;
 
 public class ReviewsAdapter extends RecyclerView.Adapter<ReviewsAdapter.ReviewViewHolder> {
     private List<Review> reviews;
+    private OnReviewClickListener listener;
+
+    public interface OnReviewClickListener {
+        void onReviewClick(Review review);
+    }
 
     public ReviewsAdapter(List<Review> reviews) {
         this.reviews = reviews;
+    }
+
+    public ReviewsAdapter(List<Review> reviews, OnReviewClickListener listener) {
+        this.reviews = reviews;
+        this.listener = listener;
     }
 
     @NonNull
@@ -36,7 +46,7 @@ public class ReviewsAdapter extends RecyclerView.Adapter<ReviewsAdapter.ReviewVi
     @Override
     public void onBindViewHolder(@NonNull ReviewViewHolder holder, int position) {
         Review review = reviews.get(position);
-        holder.bind(review);
+        holder.bind(review, listener);
     }
 
     @Override
@@ -60,7 +70,7 @@ public class ReviewsAdapter extends RecyclerView.Adapter<ReviewsAdapter.ReviewVi
             dateText = itemView.findViewById(R.id.reviewDate);
         }
 
-        void bind(Review review) {
+        void bind(Review review, OnReviewClickListener listener) {
             usernameText.setText(review.getUserName());
             ratingText.setText(String.format(Locale.getDefault(), "%.1f", review.getRating()));
             reviewText.setText(review.getText());
@@ -80,6 +90,11 @@ public class ReviewsAdapter extends RecyclerView.Adapter<ReviewsAdapter.ReviewVi
             String formattedDate = review.getFormattedDate();
             Log.d("ReviewsAdapter", "Using formatted date from model: " + formattedDate);
             dateText.setText(formattedDate);
+            
+            // Добавляем обработчик нажатия на элемент
+            if (listener != null) {
+                itemView.setOnClickListener(v -> listener.onReviewClick(review));
+            }
         }
     }
 } 

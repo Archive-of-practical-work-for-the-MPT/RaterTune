@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.ratertune.R;
 import com.example.ratertune.models.Story;
 import com.example.ratertune.utils.PicassoCache;
+import com.google.android.material.card.MaterialCardView;
 import com.squareup.picasso.Picasso;
 
 import java.util.List;
@@ -56,9 +57,11 @@ public class StoriesAdapter extends RecyclerView.Adapter<StoriesAdapter.StoryVie
 
     class StoryViewHolder extends RecyclerView.ViewHolder {
         ImageView imageView;
+        MaterialCardView cardView;
 
         StoryViewHolder(@NonNull View itemView) {
             super(itemView);
+            cardView = (MaterialCardView) itemView;
             imageView = itemView.findViewById(R.id.storyImage);
         }
 
@@ -69,12 +72,31 @@ public class StoriesAdapter extends RecyclerView.Adapter<StoriesAdapter.StoryVie
                     .noPlaceholder() // Не показываем placeholder
                     .into(imageView);
             
+            // Устанавливаем состояние просмотра
+            cardView.setSelected(story.isViewed());
+            
             // Обработка клика на элемент
             itemView.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onStoryClick(story);
                 }
             });
+        }
+    }
+    
+    /**
+     * Обновляет статус просмотра для сториза
+     * @param storyId ID сториза
+     * @param isViewed статус просмотра
+     */
+    public void updateStoryViewedStatus(String storyId, boolean isViewed) {
+        for (int i = 0; i < stories.size(); i++) {
+            Story story = stories.get(i);
+            if (story.getId().equals(storyId)) {
+                story.setViewed(isViewed);
+                notifyItemChanged(i);
+                break;
+            }
         }
     }
 } 

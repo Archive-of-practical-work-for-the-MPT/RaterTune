@@ -1513,4 +1513,252 @@ public class SupabaseClient {
             }
         }).start();
     }
+
+    /**
+     * Помечает сториз как просмотренный
+     */
+    public void markStoryAsViewed(String storyId, String userId, String token, SimpleCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Проверяем, не помечен ли сториз уже как просмотренный
+                String checkUrl = supabaseUrl + "/rest/v1/viewed_stories?story_id=eq." + storyId + "&user_id=eq." + userId;
+                
+                Request checkRequest = new Request.Builder()
+                        .url(checkUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+                
+                Response checkResponse = client.newCall(checkRequest).execute();
+                
+                String checkResponseBody = checkResponse.body() != null ? checkResponse.body().string() : "";
+                
+                // Если сториз уже помечен как просмотренный, просто возвращаем успех
+                if (checkResponse.isSuccessful() && !checkResponseBody.isEmpty() && !checkResponseBody.equals("[]")) {
+                    callback.onSuccess();
+                    return;
+                }
+                
+                // Если сториз еще не помечен как просмотренный, создаем запись
+                JsonObject recordJson = new JsonObject();
+                recordJson.addProperty("story_id", storyId);
+                recordJson.addProperty("user_id", userId);
+                
+                String apiUrl = supabaseUrl + "/rest/v1/viewed_stories";
+                
+                RequestBody requestBody = RequestBody.create(recordJson.toString(), JSON);
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .addHeader("Content-Type", "application/json")
+                        .post(requestBody)
+                        .build();
+                
+                Response response = client.newCall(request).execute();
+                
+                if (response.isSuccessful()) {
+                    callback.onSuccess();
+                } else {
+                    String errorMessage = parseErrorMessage(response.body() != null ? response.body().string() : "", response.code());
+                    Log.e(TAG, "Failed to mark story as viewed: " + errorMessage);
+                    callback.onError("Failed to mark story as viewed: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error marking story as viewed", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Проверяет, просмотрен ли сториз пользователем
+     */
+    public void isStoryViewed(String storyId, String userId, String token, ViewedCheckCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                String apiUrl = supabaseUrl + "/rest/v1/viewed_stories?story_id=eq." + storyId + "&user_id=eq." + userId;
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+                
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful()) {
+                    // Если ответ содержит данные (не пустой массив), сториз просмотрен
+                    boolean isViewed = !responseBody.isEmpty() && !responseBody.equals("[]");
+                    callback.onResult(isViewed);
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    Log.e(TAG, "Failed to check if story is viewed: " + errorMessage);
+                    callback.onError("Failed to check if story is viewed: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error checking if story is viewed", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Получает список просмотренных сторизов для пользователя
+     */
+    public void getViewedStoriesForUser(String userId, String token, ViewedStoriesCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                String apiUrl = supabaseUrl + "/rest/v1/viewed_stories?user_id=eq." + userId + "&select=story_id";
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+                
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful() && !responseBody.isEmpty()) {
+                    try {
+                        // Парсим ответ - список объектов с полем story_id
+                        Type listType = new TypeToken<List<ViewedStory>>(){}.getType();
+                        List<ViewedStory> viewedStories = gson.fromJson(responseBody, listType);
+                        
+                        // Преобразуем список объектов в список ID
+                        List<String> storyIds = new ArrayList<>();
+                        for (ViewedStory viewedStory : viewedStories) {
+                            storyIds.add(viewedStory.getStoryId());
+                        }
+                        
+                        callback.onSuccess(storyIds);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error parsing viewed stories", e);
+                        callback.onError("Error parsing viewed stories: " + e.getMessage());
+                    }
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    Log.e(TAG, "Failed to get viewed stories: " + errorMessage);
+                    callback.onError("Failed to get viewed stories: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting viewed stories", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+    
+    /**
+     * Класс для представления записи о просмотренном сторизе
+     */
+    private static class ViewedStory {
+        @SerializedName("story_id")
+        private String storyId;
+        
+        public String getStoryId() {
+            return storyId;
+        }
+    }
+    
+    /**
+     * Интерфейс для обратного вызова при проверке просмотра сториза
+     */
+    public interface ViewedCheckCallback {
+        void onResult(boolean isViewed);
+        void onError(String errorMessage);
+    }
+    
+    /**
+     * Интерфейс для обратного вызова при получении списка просмотренных сторизов
+     */
+    public interface ViewedStoriesCallback {
+        void onSuccess(List<String> storyIds);
+        void onError(String errorMessage);
+    }
+    
+    /**
+     * Простой интерфейс для обратного вызова
+     */
+    public interface SimpleCallback {
+        void onSuccess();
+        void onError(String errorMessage);
+    }
+
+    /**
+     * Получает релиз по ID
+     */
+    public void getRelease(String releaseId, String token, ReleaseCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Формируем запрос на получение релиза
+                String apiUrl = supabaseUrl + "/rest/v1/releases?id=eq." + releaseId;
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+                
+                // Отправляем запрос
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful() && !responseBody.isEmpty()) {
+                    // Парсим JSON
+                    Type listType = new TypeToken<List<Release>>(){}.getType();
+                    List<Release> releases = gson.fromJson(responseBody, listType);
+                    
+                    if (releases != null && !releases.isEmpty()) {
+                        callback.onSuccess(releases.get(0));
+                    } else {
+                        callback.onError("Релиз не найден");
+                    }
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    callback.onError("Failed to load release: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading release", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
 }

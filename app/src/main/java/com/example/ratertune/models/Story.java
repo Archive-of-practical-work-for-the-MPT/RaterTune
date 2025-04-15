@@ -5,7 +5,7 @@ import java.util.Date;
 
 public class Story {
     @SerializedName("id")
-    private int id;
+    private String id;
     
     @SerializedName("user_id")
     private String userId;
@@ -26,16 +26,19 @@ public class Story {
     
     private String userAvatarUrl;
     
-    public int getId() {
+    // Локальное поле, не из базы
+    private boolean isViewed = false;
+
+    public Story() {
+        // Пустой конструктор для сериализации
+    }
+
+    public String getId() {
         return id;
     }
     
     public void setId(String id) {
-        try {
-            this.id = Integer.parseInt(id);
-        } catch (NumberFormatException e) {
-            this.id = 0;
-        }
+        this.id = id;
     }
     
     public String getUserId() {
@@ -66,10 +69,8 @@ public class Story {
         return createdAt;
     }
     
-    public void setCreatedAt(Date createdAt) {
-        if (createdAt != null) {
-            this.createdAt = createdAt.toString();
-        }
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
     }
     
     public String getExpiresAt() {
@@ -94,5 +95,13 @@ public class Story {
     
     public void setUserAvatarUrl(String userAvatarUrl) {
         this.userAvatarUrl = userAvatarUrl;
+    }
+    
+    public boolean isViewed() {
+        return isViewed;
+    }
+
+    public void setViewed(boolean viewed) {
+        isViewed = viewed;
     }
 }

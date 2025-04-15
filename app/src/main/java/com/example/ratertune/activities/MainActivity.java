@@ -49,12 +49,12 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        
+
         // Инициализация SupabaseClient и SessionManager
         supabaseClient = SupabaseClient.getInstance();
         sessionManager = new SessionManager(this);
         supabaseClient.setSessionManager(sessionManager);
-        
+
         // Инициализация UI элементов
         storiesRecyclerView = findViewById(R.id.storiesRecycler);
         releasesRecyclerView = findViewById(R.id.releasesRecyclerView);
@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         ImageButton profileButton = findViewById(R.id.profileButton);
         ImageButton addStoryButton = findViewById(R.id.addStoryButton);
         ImageButton addReleaseButton = findViewById(R.id.addReleaseButton);
-        
+
         profileButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
             startActivity(intent);
@@ -93,10 +93,10 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         GridLayoutManager layoutManager = new GridLayoutManager(this, 2);
         releasesRecyclerView.setLayoutManager(layoutManager);
         releasesRecyclerView.setAdapter(releasesAdapter);
-        
+
         // Настройка RecyclerView для последних рецензий
         latestReviewsList = new ArrayList<>();
-        latestReviewsAdapter = new ReviewsAdapter(latestReviewsList);
+        latestReviewsAdapter = new ReviewsAdapter(latestReviewsList, this::onReviewClick);
         LinearLayoutManager reviewsLayoutManager = new LinearLayoutManager(this);
         latestReviewsRecyclerView.setLayoutManager(reviewsLayoutManager);
         latestReviewsRecyclerView.setAdapter(latestReviewsAdapter);
@@ -117,6 +117,25 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     }
     
     private void onStoryClick(Story story) {
+        // Отмечаем сториз как просмотренный
+        String userId = sessionManager.getUserId();
+        String token = sessionManager.getAccessToken();
+        
+        supabaseClient.markStoryAsViewed(story.getId(), userId, token, new SupabaseClient.SimpleCallback() {
+            @Override
+            public void onSuccess() {
+                // Обновляем статус просмотра
+                runOnUiThread(() -> {
+                    storiesAdapter.updateStoryViewedStatus(story.getId(), true);
+                });
+            }
+            
+            @Override
+            public void onError(String errorMessage) {
+                Log.e(TAG, "Error marking story as viewed: " + errorMessage);
+            }
+        });
+        
         Intent intent = new Intent(MainActivity.this, StoryViewActivity.class);
         intent.putExtra("id", story.getId());
         intent.putExtra("imageUrl", story.getImageUrl());
@@ -126,26 +145,73 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     
     private void loadUserStories() {
         String token = sessionManager.getAccessToken();
+        String userId = sessionManager.getUserId();
         
-        supabaseClient.getAllStories(token, new StoriesListCallback() {
+        if (token == null) {
+            Toast.makeText(this, "Ошибка авторизации", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Сначала загрузим просмотренные сторизы
+        supabaseClient.getViewedStoriesForUser(userId, token, new SupabaseClient.ViewedStoriesCallback() {
             @Override
-            public void onSuccess(List<Story> stories) {
-                runOnUiThread(() -> {
-                    storiesList.clear();
-                    storiesList.addAll(stories);
-                    storiesAdapter.notifyDataSetChanged();
+            public void onSuccess(List<String> viewedStoryIds) {
+                // Теперь загрузим все сторизы
+                supabaseClient.getAllStories(token, new StoriesListCallback() {
+                    @Override
+                    public void onSuccess(List<Story> stories) {
+                        // Отмечаем просмотренные сторизы
+                        for (Story story : stories) {
+                            if (viewedStoryIds.contains(story.getId())) {
+                                story.setViewed(true);
+                            }
+                        }
+                        
+                        runOnUiThread(() -> {
+                            storiesList.clear();
+                            storiesList.addAll(stories);
+                            storiesAdapter.notifyDataSetChanged();
+                            
+                            // Предварительно загружаем все изображения в кэш
+                            for (Story story : stories) {
+                                PicassoCache.preloadImage(MainActivity.this, story.getImageUrl());
+                            }
+                        });
+                    }
                     
-                    // Предварительно загружаем все изображения в кэш
-                    for (Story story : stories) {
-                        PicassoCache.preloadImage(MainActivity.this, story.getImageUrl());
+                    @Override
+                    public void onError(String errorMessage) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(MainActivity.this, "Ошибка загрузки сторизов: " + errorMessage, Toast.LENGTH_SHORT).show();
+                        });
                     }
                 });
             }
             
             @Override
             public void onError(String errorMessage) {
-                runOnUiThread(() -> {
-                    Toast.makeText(MainActivity.this, "Ошибка загрузки сторизов: " + errorMessage, Toast.LENGTH_SHORT).show();
+                // Даже если ошибка с просмотренными сторизами, всё равно загружаем сторизы
+                supabaseClient.getAllStories(token, new StoriesListCallback() {
+                    @Override
+                    public void onSuccess(List<Story> stories) {
+                        runOnUiThread(() -> {
+                            storiesList.clear();
+                            storiesList.addAll(stories);
+                            storiesAdapter.notifyDataSetChanged();
+                            
+                            // Предварительно загружаем все изображения в кэш
+                            for (Story story : stories) {
+                                PicassoCache.preloadImage(MainActivity.this, story.getImageUrl());
+                            }
+                        });
+                    }
+                    
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(MainActivity.this, "Ошибка загрузки сторизов: " + error, Toast.LENGTH_SHORT).show();
+                        });
+                    }
                 });
             }
         });
@@ -261,5 +327,45 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         intent.putExtra("rating", release.getRating());
         intent.putExtra("releaseDate", release.getReleaseDate());
         startActivity(intent);
+    }
+
+    private void onReviewClick(Review review) {
+        // Получаем ID релиза из рецензии
+        String releaseId = review.getReleaseId();
+        
+        // Получаем данные релиза перед открытием экрана
+        String token = sessionManager.getAccessToken();
+        if (token == null) {
+            Toast.makeText(this, "Ошибка авторизации", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Показываем индикатор загрузки
+        Toast.makeText(this, "Загрузка релиза...", Toast.LENGTH_SHORT).show();
+        
+        // Получаем данные о релизе
+        supabaseClient.getRelease(releaseId, token, new SupabaseClient.ReleaseCallback() {
+            @Override
+            public void onSuccess(SupabaseClient.Release release) {
+                runOnUiThread(() -> {
+                    // Открываем экран с деталями релиза
+                    Intent intent = new Intent(MainActivity.this, ReleaseDetailsActivity.class);
+                    intent.putExtra("id", String.valueOf(release.getId()));
+                    intent.putExtra("title", release.getTitle());
+                    intent.putExtra("artist", release.getArtist());
+                    intent.putExtra("imageUrl", release.getCoverUrl());
+                    intent.putExtra("rating", 0.0f); // Временно используем 0
+                    intent.putExtra("releaseDate", release.getReleaseDate());
+                    startActivity(intent);
+                });
+            }
+            
+            @Override
+            public void onError(String errorMessage) {
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Ошибка загрузки релиза: " + errorMessage, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 }
