@@ -64,6 +64,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         ImageButton profileButton = findViewById(R.id.profileButton);
         ImageButton addStoryButton = findViewById(R.id.addStoryButton);
         ImageButton addReleaseButton = findViewById(R.id.addReleaseButton);
+        TextView viewAllReleasesButton = findViewById(R.id.viewAllReleasesButton);
 
         profileButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
@@ -77,6 +78,11 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         
         addReleaseButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, AddReleaseActivity.class);
+            startActivity(intent);
+        });
+        
+        viewAllReleasesButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, AllReleasesActivity.class);
             startActivity(intent);
         });
         

@@ -1,20 +1,19 @@
 package com.example.ratertune.models;
 
 import com.google.gson.annotations.SerializedName;
-import java.util.Date;
 
 public class Story {
     @SerializedName("id")
     private String id;
     
-    @SerializedName("user_id")
-    private String userId;
+    @SerializedName("text")
+    private String text;
     
     @SerializedName("image_url")
     private String imageUrl;
     
-    @SerializedName("text")
-    private String text;
+    @SerializedName("user_id")
+    private String userId;
     
     @SerializedName("created_at")
     private String createdAt;
@@ -22,17 +21,22 @@ public class Story {
     @SerializedName("expires_at")
     private String expiresAt;
     
-    private String userName;
+    // Локальное поле для отслеживания просмотра, не сериализуется
+    private boolean viewed = false;
     
-    private String userAvatarUrl;
-    
-    // Локальное поле, не из базы
-    private boolean isViewed = false;
-
     public Story() {
-        // Пустой конструктор для сериализации
+        // Пустой конструктор для Gson
     }
-
+    
+    public Story(String id, String text, String imageUrl, String userId, String createdAt, String expiresAt) {
+        this.id = id;
+        this.text = text;
+        this.imageUrl = imageUrl;
+        this.userId = userId;
+        this.createdAt = createdAt;
+        this.expiresAt = expiresAt;
+    }
+    
     public String getId() {
         return id;
     }
@@ -41,12 +45,12 @@ public class Story {
         this.id = id;
     }
     
-    public String getUserId() {
-        return userId;
+    public String getText() {
+        return text;
     }
     
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public void setText(String text) {
+        this.text = text;
     }
     
     public String getImageUrl() {
@@ -57,12 +61,12 @@ public class Story {
         this.imageUrl = imageUrl;
     }
     
-    public String getText() {
-        return text;
+    public String getUserId() {
+        return userId;
     }
     
-    public void setText(String text) {
-        this.text = text;
+    public void setUserId(String userId) {
+        this.userId = userId;
     }
     
     public String getCreatedAt() {
@@ -81,27 +85,11 @@ public class Story {
         this.expiresAt = expiresAt;
     }
     
-    public String getUserName() {
-        return userName;
-    }
-    
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
-    
-    public String getUserAvatarUrl() {
-        return userAvatarUrl;
-    }
-    
-    public void setUserAvatarUrl(String userAvatarUrl) {
-        this.userAvatarUrl = userAvatarUrl;
-    }
-    
     public boolean isViewed() {
-        return isViewed;
+        return viewed;
     }
-
+    
     public void setViewed(boolean viewed) {
-        isViewed = viewed;
+        this.viewed = viewed;
     }
-}
+} 

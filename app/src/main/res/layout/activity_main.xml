@@ -105,6 +105,26 @@
                     android:textSize="20sp"
                     android:textStyle="bold" />
 
+                <TextView
+                    android:id="@+id/viewAllReleasesButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="Смотреть все"
+                    android:textColor="@android:color/white"
+                    android:textSize="12sp"
+                    android:background="@drawable/rounded_button_background"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp" 
+                    android:foreground="?attr/selectableItemBackground"
+                    android:gravity="center"
+                    android:minWidth="80dp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    />
+
                 <ImageButton
                     android:id="@+id/addReleaseButton"
                     android:layout_width="48dp"

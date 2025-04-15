@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="sort_options">
+        <item>Дата выхода (новое)</item>
+        <item>Дата выхода (старое)</item>
+        <item>Название релиза (А-Я)</item>
+        <item>Название релиза (Я-А)</item>
+        <item>Исполнитель (А-Я)</item>
+        <item>Исполнитель (Я-А)</item>
+    </string-array>
+</resources> 
