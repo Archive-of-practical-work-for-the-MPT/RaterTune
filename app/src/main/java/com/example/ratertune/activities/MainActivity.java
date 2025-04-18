@@ -27,9 +27,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements ReleasesAdapter.OnReleaseClickListener {
     private static final String TAG = "MainActivity";
-    
-    private RecyclerView storiesRecyclerView;
-    private RecyclerView releasesRecyclerView;
+
     private RecyclerView latestReviewsRecyclerView;
     private TextView noLatestReviewsText;
     
@@ -56,8 +54,8 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         supabaseClient.setSessionManager(sessionManager);
 
         // Инициализация UI элементов
-        storiesRecyclerView = findViewById(R.id.storiesRecycler);
-        releasesRecyclerView = findViewById(R.id.releasesRecyclerView);
+        RecyclerView storiesRecyclerView = findViewById(R.id.storiesRecycler);
+        RecyclerView releasesRecyclerView = findViewById(R.id.releasesRecyclerView);
         latestReviewsRecyclerView = findViewById(R.id.latestReviewsRecyclerView);
         noLatestReviewsText = findViewById(R.id.noLatestReviewsText);
         
@@ -65,6 +63,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         ImageButton addStoryButton = findViewById(R.id.addStoryButton);
         ImageButton addReleaseButton = findViewById(R.id.addReleaseButton);
         TextView viewAllReleasesButton = findViewById(R.id.viewAllReleasesButton);
+        TextView viewAllReviewsButton = findViewById(R.id.viewAllReviewsButton);
 
         profileButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, ProfileActivity.class);
@@ -83,6 +82,11 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         
         viewAllReleasesButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, AllReleasesActivity.class);
+            startActivity(intent);
+        });
+        
+        viewAllReviewsButton.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, AllReviewsActivity.class);
             startActivity(intent);
         });
         

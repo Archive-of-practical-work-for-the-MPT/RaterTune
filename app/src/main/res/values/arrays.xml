@@ -8,4 +8,12 @@
         <item>Исполнитель (А-Я)</item>
         <item>Исполнитель (Я-А)</item>
     </string-array>
+
+    <string-array name="review_filter_options">
+        <item>Все рецензии</item>
+        <item>Высокие оценки (7+)</item>
+        <item>Низкие оценки (&lt;7)</item>
+        <item>Новые сначала</item>
+        <item>Старые сначала</item>
+    </string-array>
 </resources> 

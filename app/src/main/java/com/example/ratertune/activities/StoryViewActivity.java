@@ -11,8 +11,6 @@ import com.example.ratertune.R;
 import com.squareup.picasso.Picasso;
 
 public class StoryViewActivity extends AppCompatActivity {
-    private ImageView storyImage;
-    private TextView storyText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -20,8 +18,8 @@ public class StoryViewActivity extends AppCompatActivity {
         setContentView(R.layout.activity_story_view);
 
         // Инициализация компонентов
-        storyImage = findViewById(R.id.storyImage);
-        storyText = findViewById(R.id.storyText);
+        ImageView storyImage = findViewById(R.id.storyImage);
+        TextView storyText = findViewById(R.id.storyText);
 
         // Получаем данные из Intent
         String imageUrl = getIntent().getStringExtra("imageUrl");

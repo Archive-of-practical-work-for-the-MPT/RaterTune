@@ -60,6 +60,7 @@ public class ReviewsAdapter extends RecyclerView.Adapter<ReviewsAdapter.ReviewVi
         TextView ratingText;
         TextView reviewText;
         TextView dateText;
+        TextView releaseNameText;
 
         ReviewViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -68,6 +69,7 @@ public class ReviewsAdapter extends RecyclerView.Adapter<ReviewsAdapter.ReviewVi
             ratingText = itemView.findViewById(R.id.reviewRating);
             reviewText = itemView.findViewById(R.id.reviewText);
             dateText = itemView.findViewById(R.id.reviewDate);
+            releaseNameText = itemView.findViewById(R.id.reviewReleaseName);
         }
 
         void bind(Review review, OnReviewClickListener listener) {
@@ -90,6 +92,14 @@ public class ReviewsAdapter extends RecyclerView.Adapter<ReviewsAdapter.ReviewVi
             String formattedDate = review.getFormattedDate();
             Log.d("ReviewsAdapter", "Using formatted date from model: " + formattedDate);
             dateText.setText(formattedDate);
+            
+            // Добавляем информацию о релизе
+            if (review.getReleaseName() != null && !review.getReleaseName().isEmpty()) {
+                releaseNameText.setText(review.getReleaseName());
+                releaseNameText.setVisibility(View.VISIBLE);
+            } else {
+                releaseNameText.setVisibility(View.GONE);
+            }
             
             // Добавляем обработчик нажатия на элемент
             if (listener != null) {

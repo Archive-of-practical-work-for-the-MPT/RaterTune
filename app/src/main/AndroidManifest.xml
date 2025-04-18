@@ -45,6 +45,9 @@
         <activity
             android:name=".activities.AllReleasesActivity"
             android:exported="false" />
+        <activity
+            android:name=".activities.AllReviewsActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

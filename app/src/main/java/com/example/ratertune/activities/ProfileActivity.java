@@ -27,8 +27,7 @@ import java.util.Objects;
 
 public class ProfileActivity extends AppCompatActivity {
     private static final int MAX_IMAGE_SIZE_MB = 5; // Максимальный размер изображения в МБ
-    
-    private ImageButton backButton;
+
     private ShapeableImageView profileImage;
     private TextView userNameText;
     private TextView userEmailText;
@@ -90,7 +89,7 @@ public class ProfileActivity extends AppCompatActivity {
         sessionManager = new SessionManager(this);
         
         // Инициализация компонентов
-        backButton = findViewById(R.id.backButton);
+        ImageButton backButton = findViewById(R.id.backButton);
         profileImage = findViewById(R.id.profileImage);
         userNameText = findViewById(R.id.userNameText);
         userEmailText = findViewById(R.id.userEmailText);

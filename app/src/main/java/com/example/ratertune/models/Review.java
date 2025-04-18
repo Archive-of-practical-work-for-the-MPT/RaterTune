@@ -37,6 +37,9 @@ public class Review {
     @SerializedName("updated_at")
     private String updatedAt;
 
+    @SerializedName("release_name")
+    private String releaseName;
+
     private static final SimpleDateFormat[] inputFormats = new SimpleDateFormat[] {
         new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()),
         new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()),
@@ -57,6 +60,21 @@ public class Review {
         this.userName = userName;
         this.userAvatarUrl = userAvatarUrl;
         this.releaseId = releaseId;
+        this.rating = rating;
+        this.text = text;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+        
+        Log.d(TAG, "Created review with date: " + createdAt);
+    }
+
+    public Review(String id, String userId, String userName, String userAvatarUrl, String releaseId, String releaseName, float rating, String text, String createdAt, String updatedAt) {
+        this.id = id;
+        this.userId = userId;
+        this.userName = userName;
+        this.userAvatarUrl = userAvatarUrl;
+        this.releaseId = releaseId;
+        this.releaseName = releaseName;
         this.rating = rating;
         this.text = text;
         this.createdAt = createdAt;
@@ -103,6 +121,14 @@ public class Review {
 
     public void setReleaseId(String releaseId) {
         this.releaseId = releaseId;
+    }
+
+    public String getReleaseName() {
+        return releaseName;
+    }
+
+    public void setReleaseName(String releaseName) {
+        this.releaseName = releaseName;
     }
 
     public float getRating() { return rating; }

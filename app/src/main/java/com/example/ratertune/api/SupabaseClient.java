@@ -1000,6 +1000,39 @@ public class SupabaseClient {
     public void getReviews(String releaseId, String token, ReviewsCallback callback) {
         new Thread(() -> {
             try {
+                // Сначала получаем информацию о релизе
+                String releaseUrl = supabaseUrl + "/rest/v1/releases?id=eq." + releaseId;
+                URL releaseApiUrl = new URL(releaseUrl);
+                HttpURLConnection releaseConnection = (HttpURLConnection) releaseApiUrl.openConnection();
+                releaseConnection.setRequestMethod("GET");
+                releaseConnection.setRequestProperty("apikey", supabaseKey);
+                releaseConnection.setRequestProperty("Authorization", "Bearer " + token);
+                releaseConnection.setRequestProperty("Content-Type", "application/json");
+                
+                String releaseName = null;
+                // Получаем информацию о релизе
+                int releaseResponseCode = releaseConnection.getResponseCode();
+                if (releaseResponseCode == HttpURLConnection.HTTP_OK) {
+                    BufferedReader releaseReader = new BufferedReader(new InputStreamReader(releaseConnection.getInputStream()));
+                    StringBuilder releaseResponse = new StringBuilder();
+                    String releaseLine;
+                    while ((releaseLine = releaseReader.readLine()) != null) {
+                        releaseResponse.append(releaseLine);
+                    }
+                    releaseReader.close();
+                    
+                    String releaseResponseStr = releaseResponse.toString();
+                    JSONArray releaseArray = new JSONArray(releaseResponseStr);
+                    if (releaseArray.length() > 0) {
+                        JSONObject releaseJson = releaseArray.getJSONObject(0);
+                        String title = releaseJson.getString("title");
+                        String artist = releaseJson.getString("artist");
+                        releaseName = artist + " - " + title;
+                        Log.d(TAG, "Got release info: " + releaseName);
+                    }
+                }
+                
+                // Теперь получаем рецензии
                 String url = supabaseUrl + "/rest/v1/reviews?release_id=eq." + releaseId;
                 Log.d(TAG, "Getting reviews for release: " + releaseId);
                 
@@ -1031,6 +1064,8 @@ public class SupabaseClient {
                     
                     Log.d(TAG, "Got " + jsonArray.length() + " reviews");
                     
+                    final String finalReleaseName = releaseName;
+                    
                     for (int i = 0; i < jsonArray.length(); i++) {
                         JSONObject json = jsonArray.getJSONObject(i);
                         
@@ -1057,6 +1092,7 @@ public class SupabaseClient {
                             json.getString("user_name"),
                             json.optString("user_avatar_url", null),
                             json.getString("release_id"),
+                            finalReleaseName,
                             (float) json.getDouble("rating"),
                             json.getString("text"),
                             createdAt,
@@ -1108,6 +1144,37 @@ public class SupabaseClient {
         
         new Thread(() -> {
             try {
+                // Сначала получаем информацию о релизе
+                String releaseName = null;
+                String releaseUrl = supabaseUrl + "/rest/v1/releases?id=eq." + releaseId;
+                URL releaseApiUrl = new URL(releaseUrl);
+                HttpURLConnection releaseConnection = (HttpURLConnection) releaseApiUrl.openConnection();
+                releaseConnection.setRequestMethod("GET");
+                releaseConnection.setRequestProperty("apikey", supabaseKey);
+                releaseConnection.setRequestProperty("Authorization", "Bearer " + token);
+                releaseConnection.setRequestProperty("Content-Type", "application/json");
+                
+                int releaseResponseCode = releaseConnection.getResponseCode();
+                if (releaseResponseCode == HttpURLConnection.HTTP_OK) {
+                    BufferedReader releaseReader = new BufferedReader(new InputStreamReader(releaseConnection.getInputStream()));
+                    StringBuilder releaseResponse = new StringBuilder();
+                    String releaseLine;
+                    while ((releaseLine = releaseReader.readLine()) != null) {
+                        releaseResponse.append(releaseLine);
+                    }
+                    releaseReader.close();
+                    
+                    String releaseResponseStr = releaseResponse.toString();
+                    JSONArray releaseArray = new JSONArray(releaseResponseStr);
+                    if (releaseArray.length() > 0) {
+                        JSONObject releaseJson = releaseArray.getJSONObject(0);
+                        String title = releaseJson.getString("title");
+                        String artist = releaseJson.getString("artist");
+                        releaseName = artist + " - " + title;
+                        Log.d(TAG, "Got release info for new review: " + releaseName);
+                    }
+                }
+                
                 // Получаем текущего пользователя
                 String userId = getCurrentUserId();
                 String userName = getCurrentUserName();
@@ -1121,6 +1188,9 @@ public class SupabaseClient {
                 reviewJson.addProperty("release_id", releaseId);
                 reviewJson.addProperty("rating", rating);
                 reviewJson.addProperty("text", text);
+                if (releaseName != null) {
+                    reviewJson.addProperty("release_name", releaseName);
+                }
                 
                 // Формируем запрос
                 String apiUrl = supabaseUrl + "/rest/v1/reviews";
@@ -1156,6 +1226,7 @@ public class SupabaseClient {
                             json.getString("user_name"),
                             json.optString("user_avatar_url", null),
                             json.getString("release_id"),
+                            releaseName,
                             (float) json.getDouble("rating"),
                             json.getString("text"),
                             createdAt,
@@ -1385,6 +1456,7 @@ public class SupabaseClient {
                     
                     Log.d(TAG, "Got " + jsonArray.length() + " latest reviews");
                     
+                    // Для каждой рецензии загружаем информацию о релизе
                     for (int i = 0; i < jsonArray.length(); i++) {
                         JSONObject json = jsonArray.getJSONObject(i);
                         
@@ -1398,12 +1470,46 @@ public class SupabaseClient {
                             updatedAt = json.getString("updated_at");
                         }
                         
+                        String releaseId = json.getString("release_id");
+                        String releaseName = null;
+                        
+                        // Получаем информацию о релизе
+                        String releaseUrl = supabaseUrl + "/rest/v1/releases?id=eq." + releaseId;
+                        URL releaseApiUrl = new URL(releaseUrl);
+                        HttpURLConnection releaseConnection = (HttpURLConnection) releaseApiUrl.openConnection();
+                        releaseConnection.setRequestMethod("GET");
+                        releaseConnection.setRequestProperty("apikey", supabaseKey);
+                        releaseConnection.setRequestProperty("Authorization", "Bearer " + token);
+                        releaseConnection.setRequestProperty("Content-Type", "application/json");
+                        
+                        int releaseResponseCode = releaseConnection.getResponseCode();
+                        if (releaseResponseCode == HttpURLConnection.HTTP_OK) {
+                            BufferedReader releaseReader = new BufferedReader(new InputStreamReader(releaseConnection.getInputStream()));
+                            StringBuilder releaseResponse = new StringBuilder();
+                            String releaseLine;
+                            while ((releaseLine = releaseReader.readLine()) != null) {
+                                releaseResponse.append(releaseLine);
+                            }
+                            releaseReader.close();
+                            
+                            String releaseResponseStr = releaseResponse.toString();
+                            JSONArray releaseArray = new JSONArray(releaseResponseStr);
+                            if (releaseArray.length() > 0) {
+                                JSONObject releaseJson = releaseArray.getJSONObject(0);
+                                String title = releaseJson.getString("title");
+                                String artist = releaseJson.getString("artist");
+                                releaseName = artist + " - " + title;
+                                Log.d(TAG, "Got release info for review " + i + ": " + releaseName);
+                            }
+                        }
+                        
                         Review review = new Review(
                             json.getString("id"),
                             json.getString("user_id"),
                             json.getString("user_name"),
                             json.optString("user_avatar_url", null),
                             json.getString("release_id"),
+                            releaseName,
                             (float) json.getDouble("rating"),
                             json.getString("text"),
                             createdAt,

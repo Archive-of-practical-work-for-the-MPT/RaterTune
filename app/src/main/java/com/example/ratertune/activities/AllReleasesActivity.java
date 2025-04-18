@@ -1,12 +1,18 @@
 package com.example.ratertune.activities;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
@@ -27,15 +33,20 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class AllReleasesActivity extends AppCompatActivity implements ReleasesAdapter.OnReleaseClickListener {
     private RecyclerView releasesRecyclerView;
     private List<Release> releasesList;
+    private List<Release> filteredReleasesList; // Список отфильтрованных релизов
     private ReleasesAdapter releasesAdapter;
     private SupabaseClient supabaseClient;
     private SessionManager sessionManager;
     private Spinner sortSpinner;
-    
+    private EditText searchEditText;
+    private String currentSearchQuery = "";
+
     // Константы для сортировки
     private static final int SORT_BY_DATE_NEW = 0;
     private static final int SORT_BY_DATE_OLD = 1;
@@ -54,12 +65,16 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
         // Инициализация toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setTitle("Все альбомы");
 
         // Инициализация SupabaseClient и SessionManager
         supabaseClient = SupabaseClient.getInstance();
         sessionManager = new SessionManager(this);
+
+        // Инициализация поля поиска
+        searchEditText = findViewById(R.id.searchEditText);
+        setupSearchField();
 
         // Инициализация спиннера для сортировки
         sortSpinner = findViewById(R.id.sortSpinner);
@@ -72,7 +87,7 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 currentSortOption = position;
-                sortReleases();
+                applyFiltersAndSort();
             }
 
             @Override
@@ -84,7 +99,8 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
         // Инициализация RecyclerView
         releasesRecyclerView = findViewById(R.id.allReleasesRecyclerView);
         releasesList = new ArrayList<>();
-        releasesAdapter = new ReleasesAdapter(releasesList, this, this);
+        filteredReleasesList = new ArrayList<>();
+        releasesAdapter = new ReleasesAdapter(filteredReleasesList, this, this);
         
         // Настраиваем сетку 2x2 для альбомов
         GridLayoutManager layoutManager = new GridLayoutManager(this, 2);
@@ -93,6 +109,39 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
 
         // Загружаем все релизы
         loadAllReleases();
+    }
+
+    private void setupSearchField() {
+        // Обработка ввода текста в реальном времени
+        searchEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                currentSearchQuery = s.toString().toLowerCase().trim();
+                applyFiltersAndSort();
+            }
+        });
+
+        // Обработка нажатия кнопки Поиск на клавиатуре
+        searchEditText.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH ||
+                (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                // Скрыть клавиатуру
+                View view = getCurrentFocus();
+                if (view != null) {
+                    android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
+                            getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+                return true;
+            }
+            return false;
+        });
     }
 
     private void loadAllReleases() {
@@ -123,7 +172,7 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
                 
                 // Сортируем и обновляем UI в основном потоке
                 runOnUiThread(() -> {
-                    sortReleases();
+                    applyFiltersAndSort();
                     
                     // Для каждого релиза запрашиваем средний рейтинг
                     for (int i = 0; i < releasesList.size(); i++) {
@@ -134,8 +183,17 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
                             public void onSuccess(float averageRating, int reviewsCount) {
                                 // Обновляем рейтинг в модели и в адаптере
                                 runOnUiThread(() -> {
+                                    // Находим этот релиз и в основном списке, и в отфильтрованном
                                     releasesList.get(position).setRating(averageRating);
-                                    releasesAdapter.notifyItemChanged(position);
+                                    
+                                    // Проверяем, есть ли этот релиз в отфильтрованном списке
+                                    for (int j = 0; j < filteredReleasesList.size(); j++) {
+                                        if (filteredReleasesList.get(j).getId().equals(releaseId)) {
+                                            filteredReleasesList.get(j).setRating(averageRating);
+                                            releasesAdapter.notifyItemChanged(j);
+                                            break;
+                                        }
+                                    }
                                 });
                             }
                             
@@ -158,28 +216,50 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
         });
     }
     
+    private void applyFiltersAndSort() {
+        // Применяем фильтрацию, если есть поисковый запрос
+        if (!currentSearchQuery.isEmpty()) {
+            filteredReleasesList.clear();
+            
+            // Фильтруем релизы по названию и исполнителю
+            for (Release release : releasesList) {
+                if (release.getTitle().toLowerCase().contains(currentSearchQuery) || 
+                    release.getArtist().toLowerCase().contains(currentSearchQuery)) {
+                    filteredReleasesList.add(release);
+                }
+            }
+        } else {
+            // Если поисковый запрос пустой, показываем все релизы
+            filteredReleasesList.clear();
+            filteredReleasesList.addAll(releasesList);
+        }
+        
+        // Применяем сортировку
+        sortReleases();
+    }
+    
     private void sortReleases() {
-        if (releasesList.isEmpty()) {
+        if (filteredReleasesList.isEmpty()) {
             return;
         }
         
         switch (currentSortOption) {
             case SORT_BY_DATE_NEW:
                 // Сортируем по дате (сначала новые)
-                Collections.sort(releasesList, (release1, release2) -> {
+                filteredReleasesList.sort((release1, release2) -> {
                     String date1Str = release1.getReleaseDate();
                     String date2Str = release2.getReleaseDate();
-                    
+
                     // Проверка на null или пустые строки
                     if (date1Str == null || date1Str.isEmpty()) return 1;
                     if (date2Str == null || date2Str.isEmpty()) return -1;
                     if (date1Str.equals(date2Str)) return 0;
-                    
+
                     try {
                         // Пробуем разные форматы даты
                         Date date1 = parseDate(date1Str);
                         Date date2 = parseDate(date2Str);
-                        
+
                         if (date1 != null && date2 != null) {
                             return date2.compareTo(date1); // Обратный порядок для новых сначала
                         } else {
@@ -195,20 +275,20 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
                 
             case SORT_BY_DATE_OLD:
                 // Сортируем по дате (сначала старые)
-                Collections.sort(releasesList, (release1, release2) -> {
+                filteredReleasesList.sort((release1, release2) -> {
                     String date1Str = release1.getReleaseDate();
                     String date2Str = release2.getReleaseDate();
-                    
+
                     // Проверка на null или пустые строки
                     if (date1Str == null || date1Str.isEmpty()) return 1;
                     if (date2Str == null || date2Str.isEmpty()) return -1;
                     if (date1Str.equals(date2Str)) return 0;
-                    
+
                     try {
                         // Пробуем разные форматы даты
                         Date date1 = parseDate(date1Str);
                         Date date2 = parseDate(date2Str);
-                        
+
                         if (date1 != null && date2 != null) {
                             return date1.compareTo(date2); // Прямой порядок для старых сначала
                         } else {
@@ -224,30 +304,26 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
                 
             case SORT_BY_TITLE_AZ:
                 // Сортируем по названию (А-Я)
-                Collections.sort(releasesList, (release1, release2) -> 
-                    release1.getTitle().compareToIgnoreCase(release2.getTitle())
-                );
+                filteredReleasesList.sort((release1, release2) ->
+                        release1.getTitle().compareToIgnoreCase(release2.getTitle()));
                 break;
                 
             case SORT_BY_TITLE_ZA:
                 // Сортируем по названию (Я-А)
-                Collections.sort(releasesList, (release1, release2) -> 
-                    release2.getTitle().compareToIgnoreCase(release1.getTitle())
-                );
+                filteredReleasesList.sort((release1, release2) ->
+                        release2.getTitle().compareToIgnoreCase(release1.getTitle()));
                 break;
                 
             case SORT_BY_ARTIST_AZ:
                 // Сортируем по исполнителю (А-Я)
-                Collections.sort(releasesList, (release1, release2) -> 
-                    release1.getArtist().compareToIgnoreCase(release2.getArtist())
-                );
+                filteredReleasesList.sort((release1, release2) ->
+                        release1.getArtist().compareToIgnoreCase(release2.getArtist()));
                 break;
                 
             case SORT_BY_ARTIST_ZA:
                 // Сортируем по исполнителю (Я-А)
-                Collections.sort(releasesList, (release1, release2) -> 
-                    release2.getArtist().compareToIgnoreCase(release1.getArtist())
-                );
+                filteredReleasesList.sort((release1, release2) ->
+                        release2.getArtist().compareToIgnoreCase(release1.getArtist()));
                 break;
         }
         
