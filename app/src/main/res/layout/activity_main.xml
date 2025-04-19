@@ -206,32 +206,38 @@
                 app:layout_constraintBottom_toBottomOf="parent" />
 
             <!-- Статистика -->
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
-                android:text="Статистика за месяц"
-                android:textColor="@color/text_primary"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <androidx.cardview.widget.CardView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                app:cardBackgroundColor="@color/card_background"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="0dp">
+                android:orientation="vertical">
 
                 <TextView
-                    android:id="@+id/statisticsText"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="16dp"
+                    android:layout_marginBottom="8dp"
+                    android:text="Хиты месяца"
                     android:textColor="@color/text_primary"
-                    android:textSize="14sp" />
+                    android:textSize="20sp"
+                    android:textStyle="bold" />
 
-            </androidx.cardview.widget.CardView>
+                <TextView
+                    android:id="@+id/noMonthlyReleasesText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="В этом месяце еще нет новых релизов"
+                    android:textAlignment="center"
+                    android:textColor="@color/text_secondary"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/topMonthlyReleasesRecyclerView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:paddingBottom="8dp" />
+
+            </LinearLayout>
 
         </LinearLayout>
 

@@ -26,7 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class ReleaseDetailsActivity extends AppCompatActivity {
+public class ReleaseDetailsActivity extends AppCompatActivity implements ReviewsAdapter.OnReviewLikeListener {
+    private static final String TAG = "ReleaseDetailsActivity";
+    
     private TextView noReviewsText;
     private RecyclerView reviewsRecyclerView;
     private ReviewsAdapter reviewsAdapter;
@@ -71,7 +73,8 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
 
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        reviewsAdapter = new ReviewsAdapter(new ArrayList<>());
+        // Инициализация адаптера с пустым списком и слушателем лайков
+        reviewsAdapter = new ReviewsAdapter(new ArrayList<>(), null, this);
         reviewsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         reviewsRecyclerView.setAdapter(reviewsAdapter);
 
@@ -234,14 +237,8 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
                         noReviewsText.setVisibility(View.GONE);
                         reviewsRecyclerView.setVisibility(View.VISIBLE);
                         
-                        // Логируем данные о рецензиях
-                        for (Review review : reviewsList) {
-                            android.util.Log.d("ReleaseDetailsActivity", 
-                                "Review date: " + review.getCreatedAt() + 
-                                ", formatted: " + review.getFormattedDate());
-                        }
-                        
-                        reviewsAdapter = new ReviewsAdapter(reviewsList);
+                        // Создаем новый адаптер с загруженными рецензиями и текущим слушателем лайков
+                        reviewsAdapter = new ReviewsAdapter(reviewsList, null, ReleaseDetailsActivity.this);
                         reviewsRecyclerView.setAdapter(reviewsAdapter);
                     }
                 });
@@ -263,5 +260,12 @@ public class ReleaseDetailsActivity extends AppCompatActivity {
         // Отменяем активные загрузки изображений
         PicassoCache.cancelTag(releaseId);
         super.onDestroy();
+    }
+    
+    // Реализация интерфейса OnReviewLikeListener
+    @Override
+    public void onReviewLike(Review review, boolean liked) {
+        // Обновление рейтинга и UI не требуется, так как адаптер сам обновляет визуальную часть
+        // Этот метод можно использовать для других действий, например, для аналитики
     }
 } 

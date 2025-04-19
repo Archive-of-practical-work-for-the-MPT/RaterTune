@@ -15,6 +15,7 @@ import com.example.ratertune.R;
 import com.example.ratertune.adapters.ReleasesAdapter;
 import com.example.ratertune.adapters.ReviewsAdapter;
 import com.example.ratertune.adapters.StoriesAdapter;
+import com.example.ratertune.adapters.TopMonthlyReleasesAdapter;
 import com.example.ratertune.api.SupabaseClient;
 import com.example.ratertune.api.StoriesListCallback;
 import com.example.ratertune.models.Release;
@@ -23,13 +24,23 @@ import com.example.ratertune.models.Story;
 import com.example.ratertune.utils.PicassoCache;
 import com.example.ratertune.utils.SessionManager;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
+import java.util.Date;
 
-public class MainActivity extends AppCompatActivity implements ReleasesAdapter.OnReleaseClickListener {
+public class MainActivity extends AppCompatActivity implements ReleasesAdapter.OnReleaseClickListener, TopMonthlyReleasesAdapter.OnReleaseClickListener {
     private static final String TAG = "MainActivity";
+    private static final int MAX_TOP_RELEASES = 5;
 
     private RecyclerView latestReviewsRecyclerView;
     private TextView noLatestReviewsText;
+    
+    private RecyclerView topMonthlyReleasesRecyclerView;
+    private TextView noMonthlyReleasesText;
     
     private SupabaseClient supabaseClient;
     private SessionManager sessionManager;
@@ -39,6 +50,9 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     
     private List<Release> releasesList;
     private ReleasesAdapter releasesAdapter;
+    
+    private List<Release> topMonthlyReleasesList;
+    private TopMonthlyReleasesAdapter topMonthlyReleasesAdapter;
     
     private List<Review> latestReviewsList;
     private ReviewsAdapter latestReviewsAdapter;
@@ -58,6 +72,9 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         RecyclerView releasesRecyclerView = findViewById(R.id.releasesRecyclerView);
         latestReviewsRecyclerView = findViewById(R.id.latestReviewsRecyclerView);
         noLatestReviewsText = findViewById(R.id.noLatestReviewsText);
+        
+        topMonthlyReleasesRecyclerView = findViewById(R.id.topMonthlyReleasesRecyclerView);
+        noMonthlyReleasesText = findViewById(R.id.noMonthlyReleasesText);
         
         ImageButton profileButton = findViewById(R.id.profileButton);
         ImageButton addStoryButton = findViewById(R.id.addStoryButton);
@@ -111,10 +128,34 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         latestReviewsRecyclerView.setLayoutManager(reviewsLayoutManager);
         latestReviewsRecyclerView.setAdapter(latestReviewsAdapter);
         
+        // Настройка RecyclerView для топ релизов месяца
+        topMonthlyReleasesList = new ArrayList<>();
+        topMonthlyReleasesAdapter = new TopMonthlyReleasesAdapter(topMonthlyReleasesList, this, this);
+        
+        // Create a grid layout with 2 columns for the podium-style layout
+        GridLayoutManager topReleasesLayoutManager = new GridLayoutManager(this, 2);
+        
+        // Configure span sizes: first place takes up full width (2 spans)
+        topReleasesLayoutManager.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+            @Override
+            public int getSpanSize(int position) {
+                // First position (position 0) takes full width
+                if (position == 0) {
+                    return 2;
+                }
+                // Other positions take 1 column
+                return 1;
+            }
+        });
+        
+        topMonthlyReleasesRecyclerView.setLayoutManager(topReleasesLayoutManager);
+        topMonthlyReleasesRecyclerView.setAdapter(topMonthlyReleasesAdapter);
+        
         // Загрузка данных
         loadUserStories();
         loadUserReleases();
         loadLatestReviews();
+        loadMonthlyStatistics();
     }
     
     @Override
@@ -124,6 +165,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         loadUserStories();
         loadUserReleases();
         loadLatestReviews();
+        loadMonthlyStatistics();
     }
     
     @Override
@@ -131,6 +173,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         super.onPause();
         // Отменяем загрузки изображений с тегами "main_activity" при уходе с экрана
         PicassoCache.cancelTag("main_activity");
+        PicassoCache.cancelTag("top_monthly");
     }
     
     @Override
@@ -359,6 +402,224 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
                     noLatestReviewsText.setVisibility(View.VISIBLE);
                     latestReviewsRecyclerView.setVisibility(View.GONE);
                 });
+            }
+        });
+    }
+    
+    /**
+     * Загружает статистику релизов за текущий месяц
+     */
+    private void loadMonthlyStatistics() {
+        String token = sessionManager.getAccessToken();
+        
+        if (token == null) {
+            Toast.makeText(this, "Ошибка авторизации", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Показываем индикатор загрузки
+        noMonthlyReleasesText.setVisibility(View.GONE);
+        topMonthlyReleasesRecyclerView.setVisibility(View.GONE);
+        
+        // Для упрощения получаем все релизы без фильтрации по дате на стороне Supabase
+        // Фильтрацию будем делать на стороне клиента после получения релизов
+        supabaseClient.getAllReleases(token, new SupabaseClient.ReleasesListCallback() {
+            @Override
+            public void onSuccess(List<SupabaseClient.Release> releases) {
+                if (releases.isEmpty()) {
+                    runOnUiThread(() -> {
+                        noMonthlyReleasesText.setVisibility(View.VISIBLE);
+                        topMonthlyReleasesRecyclerView.setVisibility(View.GONE);
+                    });
+                    return;
+                }
+                
+                Log.d(TAG, "Получено " + releases.size() + " релизов");
+                
+                // Фильтруем релизы за текущий месяц
+                List<SupabaseClient.Release> monthlyReleases = new ArrayList<>();
+                
+                // Получаем текущий месяц и год
+                Calendar calendar = Calendar.getInstance();
+                int currentMonth = calendar.get(Calendar.MONTH);
+                int currentYear = calendar.get(Calendar.YEAR);
+                
+                // Debug: логируем текущий месяц и год
+                Log.d(TAG, "Фильтрация релизов за " + (currentMonth + 1) + "." + currentYear);
+                
+                // Анализируем каждый релиз
+                for (SupabaseClient.Release release : releases) {
+                    String releaseDateStr = release.getReleaseDate();
+                    Log.d(TAG, "Релиз: " + release.getArtist() + " - " + release.getTitle() + ", дата: " + releaseDateStr);
+                    
+                    try {
+                        // Проверяем формат даты и парсим её
+                        SimpleDateFormat sdf;
+                        if (releaseDateStr.matches("\\d{4}-\\d{2}-\\d{2}")) {
+                            sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                        } else if (releaseDateStr.matches("\\d{2}\\.\\d{2}\\.\\d{4}")) {
+                            sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+                        } else {
+                            Log.e(TAG, "Неподдерживаемый формат даты: " + releaseDateStr);
+                            continue;
+                        }
+                        
+                        Date releaseDate = sdf.parse(releaseDateStr);
+                        if (releaseDate == null) continue;
+                        
+                        Calendar releaseCal = Calendar.getInstance();
+                        releaseCal.setTime(releaseDate);
+                        
+                        int releaseMonth = releaseCal.get(Calendar.MONTH);
+                        int releaseYear = releaseCal.get(Calendar.YEAR);
+                        
+                        // Debug: логируем месяц и год релиза
+                        Log.d(TAG, "Месяц релиза: " + (releaseMonth + 1) + ", год: " + releaseYear);
+                        
+                        // Проверяем, соответствует ли релиз текущему месяцу
+                        if (releaseMonth == currentMonth && releaseYear == currentYear) {
+                            monthlyReleases.add(release);
+                            Log.d(TAG, "Релиз добавлен в статистику этого месяца");
+                        } else {
+                            Log.d(TAG, "Релиз не входит в текущий месяц");
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Ошибка при обработке даты релиза: " + e.getMessage());
+                    }
+                }
+                
+                Log.d(TAG, "За текущий месяц найдено " + monthlyReleases.size() + " релизов");
+                
+                if (monthlyReleases.isEmpty()) {
+                    runOnUiThread(() -> {
+                        noMonthlyReleasesText.setVisibility(View.VISIBLE);
+                        topMonthlyReleasesRecyclerView.setVisibility(View.GONE);
+                    });
+                    return;
+                }
+                
+                // Создаем список для релизов с рейтингами
+                final List<Release> ratedReleases = new ArrayList<>();
+                
+                // Счетчик для отслеживания полученных рейтингов
+                final int[] ratingCounter = {0};
+                
+                // Конвертируем SupabaseClient.Release в нашу модель Release и получаем рейтинги
+                for (SupabaseClient.Release release : monthlyReleases) {
+                    String releaseId = String.valueOf(release.getId());
+                    
+                    // Получаем средний рейтинг для релиза
+                    supabaseClient.calculateAverageRating(releaseId, token, new SupabaseClient.AverageRatingCallback() {
+                        @Override
+                        public void onSuccess(float averageRating, int reviewsCount) {
+                            // Создаем объект релиза с рейтингом
+                            Release ratedRelease = new Release(
+                                    releaseId,
+                                    release.getTitle(),
+                                    release.getArtist(),
+                                    release.getCoverUrl(),
+                                    averageRating,
+                                    release.getReleaseDate()
+                            );
+                            ratedRelease.setReviewsCount(reviewsCount);
+                            
+                            // Добавляем в список для дальнейшей сортировки
+                            synchronized (ratedReleases) {
+                                ratedReleases.add(ratedRelease);
+                                ratingCounter[0]++;
+                                
+                                // Когда получены все рейтинги, сортируем и отображаем результаты
+                                if (ratingCounter[0] == monthlyReleases.size()) {
+                                    displayTopMonthlyReleases(ratedReleases);
+                                }
+                            }
+                        }
+                        
+                        @Override
+                        public void onError(String errorMessage) {
+                            Log.e(TAG, "Error calculating rating for release " + releaseId + ": " + errorMessage);
+                            
+                            // Создаем объект релиза без рейтинга
+                            Release ratedRelease = new Release(
+                                    releaseId,
+                                    release.getTitle(),
+                                    release.getArtist(),
+                                    release.getCoverUrl(),
+                                    0.0f,
+                                    release.getReleaseDate()
+                            );
+                            
+                            // Добавляем в список для дальнейшей сортировки
+                            synchronized (ratedReleases) {
+                                ratedReleases.add(ratedRelease);
+                                ratingCounter[0]++;
+                                
+                                // Когда получены все рейтинги, сортируем и отображаем результаты
+                                if (ratingCounter[0] == monthlyReleases.size()) {
+                                    displayTopMonthlyReleases(ratedReleases);
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+            
+            @Override
+            public void onError(String errorMessage) {
+                runOnUiThread(() -> {
+                    noMonthlyReleasesText.setText("Ошибка загрузки: " + errorMessage);
+                    noMonthlyReleasesText.setVisibility(View.VISIBLE);
+                    topMonthlyReleasesRecyclerView.setVisibility(View.GONE);
+                });
+            }
+        });
+    }
+    
+    /**
+     * Отображает визуально топ релизы за месяц
+     * @param ratedReleases список релизов с рейтингами
+     */
+    private void displayTopMonthlyReleases(List<Release> ratedReleases) {
+        // Сортируем релизы по рейтингу (от высокого к низкому)
+        Collections.sort(ratedReleases, new Comparator<Release>() {
+            @Override
+            public int compare(Release r1, Release r2) {
+                // Сначала сравниваем по рейтингу (в обратном порядке)
+                int ratingComparison = Float.compare(r2.getRating(), r1.getRating());
+                if (ratingComparison != 0) {
+                    return ratingComparison;
+                }
+                
+                // Если рейтинги равны, сравниваем по количеству отзывов (в обратном порядке)
+                return Integer.compare(r2.getReviewsCount(), r1.getReviewsCount());
+            }
+        });
+        
+        // Ограничиваем список до MAX_TOP_RELEASES
+        final List<Release> topReleases = new ArrayList<>();
+        for (int i = 0; i < Math.min(MAX_TOP_RELEASES, ratedReleases.size()); i++) {
+            topReleases.add(ratedReleases.get(i));
+        }
+        
+        // Обновляем UI в основном потоке
+        runOnUiThread(() -> {
+            if (topReleases.isEmpty()) {
+                noMonthlyReleasesText.setVisibility(View.VISIBLE);
+                topMonthlyReleasesRecyclerView.setVisibility(View.GONE);
+            } else {
+                noMonthlyReleasesText.setVisibility(View.GONE);
+                topMonthlyReleasesRecyclerView.setVisibility(View.VISIBLE);
+                
+                topMonthlyReleasesList.clear();
+                topMonthlyReleasesList.addAll(topReleases);
+                topMonthlyReleasesAdapter.notifyDataSetChanged();
+                
+                // Предварительная загрузка обложек альбомов
+                for (Release release : topReleases) {
+                    if (release.getImageUrl() != null && !release.getImageUrl().isEmpty()) {
+                        PicassoCache.preloadImage(MainActivity.this, release.getImageUrl());
+                    }
+                }
             }
         });
     }

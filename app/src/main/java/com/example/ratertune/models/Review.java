@@ -11,7 +11,7 @@ public class Review {
     private static final String TAG = "Review";
     
     @SerializedName("id")
-    private String id;
+    private long id;
     
     @SerializedName("user_id")
     private String userId;
@@ -39,6 +39,11 @@ public class Review {
 
     @SerializedName("release_name")
     private String releaseName;
+    
+    @SerializedName("likes_count")
+    private int likesCount;
+    
+    private boolean isLikedByUser;
 
     private static final SimpleDateFormat[] inputFormats = new SimpleDateFormat[] {
         new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()),
@@ -54,7 +59,7 @@ public class Review {
         // Default constructor required for Gson
     }
 
-    public Review(String id, String userId, String userName, String userAvatarUrl, String releaseId, float rating, String text, String createdAt, String updatedAt) {
+    public Review(long id, String userId, String userName, String userAvatarUrl, String releaseId, float rating, String text, String createdAt, String updatedAt) {
         this.id = id;
         this.userId = userId;
         this.userName = userName;
@@ -64,11 +69,13 @@ public class Review {
         this.text = text;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.likesCount = 0;
+        this.isLikedByUser = false;
         
         Log.d(TAG, "Created review with date: " + createdAt);
     }
 
-    public Review(String id, String userId, String userName, String userAvatarUrl, String releaseId, String releaseName, float rating, String text, String createdAt, String updatedAt) {
+    public Review(long id, String userId, String userName, String userAvatarUrl, String releaseId, String releaseName, float rating, String text, String createdAt, String updatedAt) {
         this.id = id;
         this.userId = userId;
         this.userName = userName;
@@ -79,15 +86,17 @@ public class Review {
         this.text = text;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.likesCount = 0;
+        this.isLikedByUser = false;
         
         Log.d(TAG, "Created review with date: " + createdAt);
     }
 
-    public String getId() {
+    public long getId() {
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(long id) {
         this.id = id;
     }
 
@@ -159,6 +168,22 @@ public class Review {
 
     public void setUpdatedAt(String updatedAt) {
         this.updatedAt = updatedAt;
+    }
+    
+    public int getLikesCount() {
+        return likesCount;
+    }
+    
+    public void setLikesCount(int likesCount) {
+        this.likesCount = likesCount;
+    }
+    
+    public boolean isLikedByUser() {
+        return isLikedByUser;
+    }
+    
+    public void setLikedByUser(boolean likedByUser) {
+        isLikedByUser = likedByUser;
     }
 
     public String getFormattedDate() {

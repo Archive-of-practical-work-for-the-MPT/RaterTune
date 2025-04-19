@@ -1087,7 +1087,7 @@ public class SupabaseClient {
                         }
                         
                         Review review = new Review(
-                            json.getString("id"),
+                            json.getLong("id"),
                             json.getString("user_id"),
                             json.getString("user_name"),
                             json.optString("user_avatar_url", null),
@@ -1214,28 +1214,23 @@ public class SupabaseClient {
                 
                 if (response.isSuccessful() && !responseBody.isEmpty()) {
                     // Парсим ответ
-                    JSONArray jsonArray = new JSONArray(responseBody);
-                    if (jsonArray.length() > 0) {
-                        JSONObject json = jsonArray.getJSONObject(0);
-                        String createdAt = json.getString("created_at");
-                        Log.d(TAG, "Created at: " + createdAt);
-                        
-                        Review review = new Review(
-                            json.getString("id"),
-                            json.getString("user_id"),
-                            json.getString("user_name"),
-                            json.optString("user_avatar_url", null),
-                            json.getString("release_id"),
-                            releaseName,
-                            (float) json.getDouble("rating"),
-                            json.getString("text"),
-                            createdAt,
-                            json.getString("updated_at")
-                        );
-                        callback.onSuccess(review);
-                    } else {
-                        callback.onError("Empty review data received");
-                    }
+                    JSONObject responseJson = new JSONObject(responseBody);
+                    Log.d(TAG, "Review created successfully: " + responseBody);
+                    
+                    // Создаем объект Review на основе полученных данных
+                    Review review = new Review(
+                        responseJson.getLong("id"),
+                        userId,
+                        userName,
+                        userAvatarUrl,
+                        releaseId,
+                        releaseName,
+                        rating,
+                        text,
+                        responseJson.getString("created_at"),
+                        responseJson.optString("updated_at", null)
+                    );
+                    callback.onSuccess(review);
                 } else {
                     String errorMessage = parseErrorMessage(responseBody, response.code());
                     callback.onError("Failed to create review: " + errorMessage);
@@ -1504,7 +1499,7 @@ public class SupabaseClient {
                         }
                         
                         Review review = new Review(
-                            json.getString("id"),
+                            json.getLong("id"),
                             json.getString("user_id"),
                             json.getString("user_name"),
                             json.optString("user_avatar_url", null),
@@ -1632,6 +1627,58 @@ public class SupabaseClient {
                 
             } catch (Exception e) {
                 Log.e(TAG, "Error loading releases", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Получает список релизов за определенный период времени
+     *
+     * @param startDate дата начала периода в формате YYYY-MM-DD
+     * @param endDate дата окончания периода в формате YYYY-MM-DD
+     * @param token токен доступа
+     * @param callback обратный вызов с результатом операции
+     */
+    public void getReleasesForDateRange(String startDate, String endDate, String token, ReleasesListCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+        
+        new Thread(() -> {
+            try {
+                // Формируем запрос на получение релизов за указанный период
+                String apiUrl = supabaseUrl + "/rest/v1/releases?release_date=gte." + startDate +
+                               "&release_date=lte." + endDate + "&order=release_date.desc";
+                
+                Log.d(TAG, "Getting releases for date range: " + startDate + " to " + endDate);
+                
+                Request request = new Request.Builder()
+                        .url(apiUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+                
+                // Отправляем запрос
+                Response response = client.newCall(request).execute();
+                
+                String responseBody = response.body() != null ? response.body().string() : "";
+                
+                if (response.isSuccessful() && !responseBody.isEmpty()) {
+                    // Парсим JSON
+                    Type listType = new TypeToken<List<Release>>(){}.getType();
+                    List<Release> releases = gson.fromJson(responseBody, listType);
+                    callback.onSuccess(releases);
+                } else {
+                    String errorMessage = parseErrorMessage(responseBody, response.code());
+                    callback.onError("Failed to load releases: " + errorMessage);
+                }
+                
+            } catch (Exception e) {
+                Log.e(TAG, "Error loading releases for date range", e);
                 callback.onError("Error: " + e.getMessage());
             }
         }).start();
@@ -1951,5 +1998,227 @@ public class SupabaseClient {
                 callback.onError("Error: " + e.getMessage());
             }
         }).start();
+    }
+
+    /**
+     * Проверяет, поставлен ли лайк пользователем на рецензию
+     */
+    public void isReviewLikedByUser(long reviewId, String token, LikeCheckCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+
+        if (token == null || token.isEmpty()) {
+            callback.onError("Authentication error: Token is missing");
+            return;
+        }
+
+        String userId = getCurrentUserId();
+        if (userId == null || userId.isEmpty()) {
+            callback.onError("Authentication error: User ID is missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                String queryUrl = supabaseUrl + "/rest/v1/review_likes?user_id=eq." + userId
+                        + "&review_id=eq." + reviewId + "&select=id";
+
+                Request request = new Request.Builder()
+                        .url(queryUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        String responseBody = response.body().string();
+                        JsonElement jsonElement = JsonParser.parseString(responseBody);
+                        
+                        if (jsonElement.isJsonArray()) {
+                            boolean isLiked = jsonElement.getAsJsonArray().size() > 0;
+                            callback.onSuccess(isLiked);
+                        } else {
+                            callback.onError("Invalid response format");
+                        }
+                    } else {
+                        String errorMessage = "Error: " + response.code();
+                        callback.onError(errorMessage);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error checking if review is liked", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Добавляет лайк к рецензии
+     */
+    public void likeReview(long reviewId, String token, SimpleCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+
+        if (token == null || token.isEmpty()) {
+            callback.onError("Authentication error: Token is missing");
+            return;
+        }
+
+        String userId = getCurrentUserId();
+        if (userId == null || userId.isEmpty()) {
+            callback.onError("Authentication error: User ID is missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                JsonObject requestBody = new JsonObject();
+                requestBody.addProperty("user_id", userId);
+                requestBody.addProperty("review_id", reviewId);
+
+                Request request = new Request.Builder()
+                        .url(supabaseUrl + "/rest/v1/review_likes")
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .addHeader("Prefer", "return=minimal")
+                        .addHeader("Content-Type", "application/json")
+                        .post(RequestBody.create(requestBody.toString(), JSON))
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful()) {
+                        callback.onSuccess();
+                    } else {
+                        String errorBody = response.body() != null ? response.body().string() : "";
+                        Log.e(TAG, "Error liking review: " + errorBody);
+                        callback.onError("Error: " + response.code());
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error liking review", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Удаляет лайк с рецензии
+     */
+    public void unlikeReview(long reviewId, String token, SimpleCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+
+        if (token == null || token.isEmpty()) {
+            callback.onError("Authentication error: Token is missing");
+            return;
+        }
+
+        String userId = getCurrentUserId();
+        if (userId == null || userId.isEmpty()) {
+            callback.onError("Authentication error: User ID is missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                String queryUrl = supabaseUrl + "/rest/v1/review_likes?user_id=eq." + userId
+                        + "&review_id=eq." + reviewId;
+
+                Request request = new Request.Builder()
+                        .url(queryUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .delete()
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful()) {
+                        callback.onSuccess();
+                    } else {
+                        String errorBody = response.body() != null ? response.body().string() : "";
+                        Log.e(TAG, "Error unliking review: " + errorBody);
+                        callback.onError("Error: " + response.code());
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error unliking review", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Получает количество лайков на рецензии
+     */
+    public void getReviewLikesCount(long reviewId, String token, LikesCountCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+
+        if (token == null || token.isEmpty()) {
+            callback.onError("Authentication error: Token is missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                String queryUrl = supabaseUrl + "/rest/v1/review_likes?review_id=eq." + reviewId + "&select=id";
+
+                Request request = new Request.Builder()
+                        .url(queryUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        String responseBody = response.body().string();
+                        JsonElement jsonElement = JsonParser.parseString(responseBody);
+                        
+                        if (jsonElement.isJsonArray()) {
+                            int likesCount = jsonElement.getAsJsonArray().size();
+                            callback.onSuccess(likesCount);
+                        } else {
+                            callback.onError("Invalid response format");
+                        }
+                    } else {
+                        String errorMessage = "Error: " + response.code();
+                        callback.onError(errorMessage);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting review likes count", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Интерфейс обратного вызова для проверки лайка
+     */
+    public interface LikeCheckCallback {
+        void onSuccess(boolean isLiked);
+        void onError(String errorMessage);
+    }
+
+    /**
+     * Интерфейс обратного вызова для получения количества лайков
+     */
+    public interface LikesCountCallback {
+        void onSuccess(int likesCount);
+        void onError(String errorMessage);
     }
 }

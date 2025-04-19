@@ -7,6 +7,7 @@ public class Release {
     private final String imageUrl;
     private float rating;
     private final String releaseDate;
+    private int reviewsCount;
 
     public Release(String id, String title, String artist, String imageUrl, float rating, String releaseDate) {
         this.id = id;
@@ -15,6 +16,7 @@ public class Release {
         this.imageUrl = imageUrl;
         this.rating = rating;
         this.releaseDate = releaseDate;
+        this.reviewsCount = 0;
     }
 
     public String getId() {
@@ -43,5 +45,13 @@ public class Release {
 
     public String getReleaseDate() {
         return releaseDate;
+    }
+    
+    public int getReviewsCount() {
+        return reviewsCount;
+    }
+    
+    public void setReviewsCount(int reviewsCount) {
+        this.reviewsCount = reviewsCount;
     }
 } 
