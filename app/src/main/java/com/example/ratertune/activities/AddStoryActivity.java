@@ -13,7 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.ratertune.R;
-import com.example.ratertune.api.SessionManager;
+import com.example.ratertune.utils.SessionManager;
 import com.example.ratertune.api.StoryCallback;
 import com.example.ratertune.api.SupabaseClient;
 import com.google.android.material.textfield.TextInputEditText;

@@ -9,4 +9,10 @@
     <color name="accent_dark">#5A189A</color>
     <color name="transparent_white">#33FFFFFF</color>
     <color name="transparent_black">#80000000</color>
+    
+    <!-- Цвета для кругов -->
+    <color name="circle_gold">#FFD700</color>
+    <color name="circle_silver">#C0C0C0</color>
+    <color name="circle_bronze">#CD7F32</color>
+    <color name="circle_regular">#555555</color>
 </resources>

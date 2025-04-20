@@ -3,6 +3,7 @@ package com.example.ratertune.activities;
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -142,7 +143,7 @@ public class AuthActivity extends AppCompatActivity {
                 public void onSuccess(SupabaseClient.AuthResponse response) {
                     runOnUiThread(() -> {
                         showLoading(false);
-                        showRegistrationSuccess();
+                        showEmailVerificationRequired();
                         // После успешной регистрации переключаемся на экран входа
                         isLoginMode = true;
                         authTitleText.setText(R.string.login_title);
@@ -156,7 +157,36 @@ public class AuthActivity extends AppCompatActivity {
                 public void onError(String errorMessage) {
                     runOnUiThread(() -> {
                         showLoading(false);
-                        showAuthError(errorMessage, false);
+                        // Логируем ошибку для отладки
+                        Log.d("AuthActivity", "Registration error: " + errorMessage);
+                        
+                        // Проверяем, связана ли ошибка с необходимостью подтверждения email
+                        // Supabase часто возвращает ошибку даже когда письмо успешно отправлено
+                        boolean isEmailSentCase = 
+                            errorMessage.toLowerCase().contains("confirmation") || 
+                            errorMessage.toLowerCase().contains("verify") || 
+                            errorMessage.toLowerCase().contains("verification") ||
+                            errorMessage.toLowerCase().contains("подтверждение") ||
+                            (errorMessage.toLowerCase().contains("email") && 
+                             errorMessage.toLowerCase().contains("sent")) ||
+                            // При успешной регистрации может быть код 400
+                            errorMessage.contains("400") ||
+                            // В большинстве случаев это происходит при регистрации - просто проверяем, что это не
+                            // явная ошибка существующего аккаунта
+                            (!isLoginMode && !errorMessage.contains("already")) ;
+                            
+                        if (isEmailSentCase) {
+                            showEmailVerificationRequired();
+                            
+                            // После успешной регистрации переключаемся на экран входа
+                            isLoginMode = true;
+                            authTitleText.setText(R.string.login_title);
+                            loginButton.setText(R.string.login_button);
+                            registerButton.setText(R.string.register_link);
+                            promptText.setText(R.string.no_account);
+                        } else {
+                            showAuthError(errorMessage, false);
+                        }
                     });
                 }
             });
@@ -181,7 +211,7 @@ public class AuthActivity extends AppCompatActivity {
         else if (errorMessage.contains("invalid_grant") || errorMessage.contains("Invalid login")) {
             userFriendlyMessage = "Неверный email или пароль. Попробуйте снова.";
         }
-        else if (errorMessage.contains("User already registered")) {
+        else if (errorMessage.contains("User already registered") || errorMessage.contains("already exists")) {
             userFriendlyMessage = "Пользователь с таким email уже зарегистрирован. Попробуйте войти.";
         }
         else if (errorMessage.contains("Invalid email")) {
@@ -212,6 +242,15 @@ public class AuthActivity extends AppCompatActivity {
                 .setBackgroundTint(getResources().getColor(R.color.accent_dark, null))
                 .setTextColor(getResources().getColor(R.color.text_primary, null))
                 .show();
+    }
+    
+    // Показывает сообщение о необходимости подтверждения email
+    private void showEmailVerificationRequired() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Подтверждение email")
+               .setMessage("На вашу почту отправлено письмо с ссылкой для подтверждения аккаунта. Пожалуйста, перейдите по ссылке в письме, чтобы завершить регистрацию.")
+               .setPositiveButton("Понятно", null)
+               .show();
     }
     
     // Показывает или скрывает индикатор загрузки

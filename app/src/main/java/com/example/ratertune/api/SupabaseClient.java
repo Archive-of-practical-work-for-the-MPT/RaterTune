@@ -13,6 +13,7 @@ import com.example.ratertune.models.Review;
 import com.example.ratertune.utils.Config;
 import com.example.ratertune.utils.SessionManager;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -2233,6 +2234,11 @@ public class SupabaseClient {
         void onError(String errorMessage);
     }
 
+    public interface LikeStatusCallback {
+        void onSuccess(boolean hasLiked);
+        void onError(String errorMessage);
+    }
+
     public interface PopularUsersCallback {
         void onSuccess(List<PopularUser> users);
         void onError(String errorMessage);
@@ -2434,5 +2440,362 @@ public class SupabaseClient {
             Log.e(TAG, "Error parsing popular users", e);
         }
         return users;
+    }
+
+    public interface UserStatisticsCallback {
+        void onSuccess(int likes, int reviews);
+        void onError(String errorMessage);
+    }
+
+    /**
+     * Получает статистику пользователя (количество лайков и рецензий)
+     */
+    public void getUserStatistics(String userId, String token, UserStatisticsCallback callback) {
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                // Получаем количество рецензий
+                String reviewsCountUrl = supabaseUrl + "/rest/v1/reviews?user_id=eq." + userId + "&select=count";
+                Request reviewsRequest = new Request.Builder()
+                        .url(reviewsCountUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+
+                int reviewsCount = 0;
+                try (Response response = client.newCall(reviewsRequest).execute()) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        String responseBody = response.body().string();
+                        JsonArray jsonArray = JsonParser.parseString(responseBody).getAsJsonArray();
+                        if (jsonArray.size() > 0) {
+                            JsonObject countObj = jsonArray.get(0).getAsJsonObject();
+                            reviewsCount = countObj.get("count").getAsInt();
+                        }
+                    }
+                }
+
+                // Сначала получаем список ID рецензий этого пользователя
+                String reviewsIdsUrl = supabaseUrl + "/rest/v1/reviews?user_id=eq." + userId + "&select=id";
+                Request reviewsIdsRequest = new Request.Builder()
+                        .url(reviewsIdsUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+
+                List<String> reviewIds = new ArrayList<>();
+                try (Response response = client.newCall(reviewsIdsRequest).execute()) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        String responseBody = response.body().string();
+                        JsonArray jsonArray = JsonParser.parseString(responseBody).getAsJsonArray();
+                        for (int i = 0; i < jsonArray.size(); i++) {
+                            JsonObject reviewObj = jsonArray.get(i).getAsJsonObject();
+                            reviewIds.add(reviewObj.get("id").getAsString());
+                        }
+                    }
+                }
+
+                // Получаем общее количество лайков на все рецензии пользователя
+                int likesCount = 0;
+                if (!reviewIds.isEmpty()) {
+                    StringBuilder inQuery = new StringBuilder();
+                    for (int i = 0; i < reviewIds.size(); i++) {
+                        if (i > 0) inQuery.append(",");
+                        inQuery.append(reviewIds.get(i));
+                    }
+                    
+                    String likesCountUrl = supabaseUrl + "/rest/v1/review_likes?review_id=in.(" + inQuery.toString() + ")&select=count";
+                    Request likesRequest = new Request.Builder()
+                            .url(likesCountUrl)
+                            .addHeader("apikey", supabaseKey)
+                            .addHeader("Authorization", "Bearer " + token)
+                            .get()
+                            .build();
+
+                    try (Response response = client.newCall(likesRequest).execute()) {
+                        if (response.isSuccessful() && response.body() != null) {
+                            String responseBody = response.body().string();
+                            JsonArray jsonArray = JsonParser.parseString(responseBody).getAsJsonArray();
+                            if (jsonArray.size() > 0) {
+                                JsonObject countObj = jsonArray.get(0).getAsJsonObject();
+                                likesCount = countObj.get("count").getAsInt();
+                            }
+                        }
+                    }
+                }
+
+                // Возвращаем результат
+                final int finalLikesCount = likesCount;
+                final int finalReviewsCount = reviewsCount;
+                callback.onSuccess(finalLikesCount, finalReviewsCount);
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting user statistics", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Получает рецензии, написанные пользователем
+     */
+    public void getUserReviews(String userId, String token, ReviewsCallback callback) {
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                // Получаем список рецензий пользователя
+                String userReviewsUrl = supabaseUrl + "/rest/v1/reviews?user_id=eq." + userId + "&order=created_at.desc";
+
+                Request request = new Request.Builder()
+                        .url(userReviewsUrl)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+
+                List<Review> reviews = new ArrayList<>();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        String responseBody = response.body().string();
+                        JSONArray jsonArray = new JSONArray(responseBody);
+                        Log.d(TAG, "Got " + jsonArray.length() + " reviews from response");
+                        
+                        for (int i = 0; i < jsonArray.length(); i++) {
+                            JSONObject json = jsonArray.getJSONObject(i);
+                            
+                            // Логируем все поля объекта
+                            Log.d(TAG, "Review " + i + " full JSON: " + json.toString());
+                            
+                            String createdAt = null;
+                            if (json.has("created_at") && !json.isNull("created_at")) {
+                                createdAt = json.getString("created_at");
+                            }
+                            
+                            String updatedAt = null;
+                            if (json.has("updated_at") && !json.isNull("updated_at")) {
+                                updatedAt = json.getString("updated_at");
+                            }
+                            
+                            String releaseId = json.getString("release_id");
+                            
+                            // Теперь по каждому release_id получаем информацию о релизе
+                            String releaseUrl = supabaseUrl + "/rest/v1/releases?id=eq." + releaseId;
+                            Request releaseRequest = new Request.Builder()
+                                    .url(releaseUrl)
+                                    .addHeader("apikey", supabaseKey)
+                                    .addHeader("Authorization", "Bearer " + token)
+                                    .get()
+                                    .build();
+                            
+                            String releaseName = null;
+                            
+                            try (Response releaseResponse = client.newCall(releaseRequest).execute()) {
+                                if (releaseResponse.isSuccessful() && releaseResponse.body() != null) {
+                                    String releaseResponseBody = releaseResponse.body().string();
+                                    JSONArray releaseArray = new JSONArray(releaseResponseBody);
+                                    
+                                    if (releaseArray.length() > 0) {
+                                        JSONObject releaseJson = releaseArray.getJSONObject(0);
+                                        String title = releaseJson.getString("title");
+                                        String artist = releaseJson.getString("artist");
+                                        releaseName = artist + " - " + title;
+                                    }
+                                }
+                            }
+                            
+                            Review review = new Review(
+                                json.getLong("id"),
+                                json.getString("user_id"),
+                                json.optString("user_name", "Пользователь"),
+                                json.optString("user_avatar_url", null),
+                                json.getString("release_id"),
+                                releaseName,
+                                (float) json.getDouble("rating"),
+                                json.getString("text"),
+                                createdAt,
+                                updatedAt
+                            );
+                            
+                            reviews.add(review);
+                        }
+                        
+                        callback.onSuccess(reviews);
+                    } else {
+                        String error = "Failed to get user reviews: " + 
+                                (response.body() != null ? response.body().string() : "Unknown error");
+                        Log.e(TAG, error);
+                        callback.onError(error);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting user reviews", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
+    }
+
+    /**
+     * Получает средний рейтинг и количество рецензий для конкретного релиза
+     */
+    public void getReleaseAverageRating(String releaseId, String token, AverageRatingCallback callback) {
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                String url = supabaseUrl + "/rest/v1/rpc/get_release_average_rating";
+                
+                JsonObject requestJson = new JsonObject();
+                requestJson.addProperty("release_id_param", releaseId);
+                
+                Request request = new Request.Builder()
+                        .url(url)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .addHeader("Content-Type", "application/json")
+                        .post(RequestBody.create(requestJson.toString(), JSON))
+                        .build();
+                
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        String responseBody = response.body().string();
+                        JsonObject jsonResponse = JsonParser.parseString(responseBody).getAsJsonObject();
+                        
+                        float avgRating = 0f;
+                        int count = 0;
+                        
+                        if (jsonResponse.has("average_rating") && !jsonResponse.get("average_rating").isJsonNull()) {
+                            avgRating = jsonResponse.get("average_rating").getAsFloat();
+                        }
+                        
+                        if (jsonResponse.has("reviews_count") && !jsonResponse.get("reviews_count").isJsonNull()) {
+                            count = jsonResponse.get("reviews_count").getAsInt();
+                        }
+                        
+                        callback.onSuccess(avgRating, count);
+                    } else {
+                        // Если функции нет, используем обычный метод calculateAverageRating
+                        calculateAverageRating(releaseId, token, callback);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error calculating release average rating", e);
+                // В случае ошибки пробуем использовать обычный метод
+                calculateAverageRating(releaseId, token, callback);
+            }
+        }).start();
+    }
+
+    /**
+     * Парсит JSON-ответ с рецензиями пользователя
+     */
+    private List<Review> parseReviewsFromResponse(String responseBody) {
+        List<Review> reviews = new ArrayList<>();
+        try {
+            JSONArray jsonArray = new JSONArray(responseBody);
+            Log.d(TAG, "Got " + jsonArray.length() + " reviews from response");
+            
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject json = jsonArray.getJSONObject(i);
+                
+                // Логируем все поля объекта
+                Log.d(TAG, "Review " + i + " full JSON: " + json.toString());
+                
+                String createdAt = null;
+                if (json.has("created_at") && !json.isNull("created_at")) {
+                    createdAt = json.getString("created_at");
+                }
+                
+                String updatedAt = null;
+                if (json.has("updated_at") && !json.isNull("updated_at")) {
+                    updatedAt = json.getString("updated_at");
+                }
+                
+                // Получаем информацию о релизе из вложенного объекта
+                String releaseName = null;
+                String coverUrl = null;
+                
+                if (json.has("releases") && !json.isNull("releases")) {
+                    JSONObject releaseJson = json.getJSONObject("releases");
+                    if (releaseJson.has("title") && releaseJson.has("artist")) {
+                        String title = releaseJson.getString("title");
+                        String artist = releaseJson.getString("artist");
+                        releaseName = artist + " - " + title;
+                    }
+                    
+                    if (releaseJson.has("cover_url") && !releaseJson.isNull("cover_url")) {
+                        coverUrl = releaseJson.getString("cover_url");
+                    }
+                }
+                
+                Review review = new Review(
+                    json.getLong("id"),
+                    json.getString("user_id"),
+                    json.optString("user_name", "Пользователь"),
+                    json.optString("user_avatar_url", null),
+                    json.getString("release_id"),
+                    releaseName,
+                    (float) json.getDouble("rating"),
+                    json.getString("text"),
+                    createdAt,
+                    updatedAt
+                );
+                
+                reviews.add(review);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing reviews from response", e);
+        }
+        return reviews;
+    }
+
+    /**
+     * Проверяет, поставил ли пользователь лайк рецензии
+     */
+    public void getLikeStatus(String reviewId, String userId, String token, LikeStatusCallback callback) {
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                String url = supabaseUrl + "/rest/v1/review_likes?review_id=eq." + reviewId + "&user_id=eq." + userId;
+                Request request = new Request.Builder()
+                        .url(url)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .get()
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        String responseBody = response.body().string();
+                        JSONArray jsonArray = new JSONArray(responseBody);
+                        boolean hasLiked = jsonArray.length() > 0;
+                        callback.onSuccess(hasLiked);
+                    } else {
+                        String error = "Failed to check like status: " + 
+                                (response.body() != null ? response.body().string() : "Unknown error");
+                        Log.e(TAG, error);
+                        callback.onError(error);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error checking like status", e);
+                callback.onError("Error: " + e.getMessage());
+            }
+        }).start();
     }
 }

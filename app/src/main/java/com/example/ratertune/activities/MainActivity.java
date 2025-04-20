@@ -698,8 +698,13 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     }
 
     private void onUserClick(PopularUser user) {
-        // В будущем можно добавить переход на профиль пользователя
-        Toast.makeText(this, "Выбран пользователь: " + user.getUserName(), Toast.LENGTH_SHORT).show();
+        // Запуск активности просмотра профиля пользователя
+        UserProfileActivity.start(
+                this,
+                user.getUserId(),
+                user.getUserName(),
+                user.getAvatarUrl()
+        );
     }
     
     /**

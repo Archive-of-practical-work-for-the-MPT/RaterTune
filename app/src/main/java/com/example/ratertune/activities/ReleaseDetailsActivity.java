@@ -268,4 +268,19 @@ public class ReleaseDetailsActivity extends AppCompatActivity implements Reviews
         // Обновление рейтинга и UI не требуется, так как адаптер сам обновляет визуальную часть
         // Этот метод можно использовать для других действий, например, для аналитики
     }
+    
+    /**
+     * Статический метод для запуска активности деталей релиза
+     */
+    public static void start(android.content.Context context, String id, String title, String artist, 
+                           String imageUrl, float rating, String releaseDate) {
+        android.content.Intent intent = new android.content.Intent(context, ReleaseDetailsActivity.class);
+        intent.putExtra("id", id);
+        intent.putExtra("title", title);
+        intent.putExtra("artist", artist);
+        intent.putExtra("imageUrl", imageUrl);
+        intent.putExtra("rating", rating);
+        intent.putExtra("releaseDate", releaseDate);
+        context.startActivity(intent);
+    }
 } 
