@@ -43,4 +43,4 @@ public class StoryViewActivity extends AppCompatActivity {
         // Обработчик нажатия на изображение для закрытия
         storyImage.setOnClickListener(v -> finish());
     }
-} 
+}

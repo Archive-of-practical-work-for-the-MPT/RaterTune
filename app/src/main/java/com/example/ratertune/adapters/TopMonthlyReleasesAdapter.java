@@ -43,34 +43,33 @@ public class TopMonthlyReleasesAdapter extends RecyclerView.Adapter<TopMonthlyRe
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         Release release = releases.get(position);
-        
-        // Set position badge (position + 1 to display 1-based indexing)
+
         int displayPosition = position + 1;
         holder.positionBadge.setText(String.valueOf(displayPosition));
         
-        // Setup crown based on position
+        // Устанавливаем короны
         if (displayPosition == 1) {
-            // Gold crown for 1st place
+            // Золотая корона за 1 место
             holder.crownImage.setImageResource(R.drawable.gold_crown);
             holder.crownImage.setVisibility(View.VISIBLE);
             holder.positionBadge.setBackgroundResource(R.drawable.circle_background);
         } else if (displayPosition == 2) {
-            // Silver crown for 2nd place
+            // Серебренная корона за 2 место
             holder.crownImage.setImageResource(R.drawable.silver_crown);
             holder.crownImage.setVisibility(View.VISIBLE);
             holder.positionBadge.setBackgroundResource(R.drawable.silver_circle);
         } else if (displayPosition == 3) {
-            // Bronze crown for 3rd place
+            // Бронзовая корона за 3 место
             holder.crownImage.setImageResource(R.drawable.bronze_crown);
             holder.crownImage.setVisibility(View.VISIBLE);
             holder.positionBadge.setBackgroundResource(R.drawable.bronze_circle);
         } else {
-            // Hide crown for other positions
+            // Убираем короны если это не 1-3 место
             holder.crownImage.setVisibility(View.GONE);
             holder.positionBadge.setBackgroundResource(R.drawable.regular_circle);
         }
         
-        // Load album cover
+        // Загружаем обложку альбома
         if (release.getImageUrl() != null && !release.getImageUrl().isEmpty()) {
             picasso.load(release.getImageUrl())
                   .tag("top_monthly")
@@ -79,14 +78,13 @@ public class TopMonthlyReleasesAdapter extends RecyclerView.Adapter<TopMonthlyRe
             holder.releaseImage.setImageResource(R.drawable.ic_album_placeholder);
         }
         
-        // Set artist and album title
+        // Устанавливаем имя артиста и названия альбома
         holder.artistName.setText(release.getArtist());
         holder.albumTitle.setText(release.getTitle());
         
-        // Set rating text only
+        // Устанавливаем оценку
         holder.ratingText.setText(String.format("%.1f", release.getRating()));
-        
-        // Set click listener
+
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onReleaseClick(release);
@@ -117,4 +115,4 @@ public class TopMonthlyReleasesAdapter extends RecyclerView.Adapter<TopMonthlyRe
             ratingText = itemView.findViewById(R.id.ratingText);
         }
     }
-} 
+}

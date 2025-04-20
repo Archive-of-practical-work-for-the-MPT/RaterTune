@@ -25,7 +25,6 @@
                 android:scaleType="centerCrop"
                 android:src="@drawable/ic_album_placeholder" />
 
-            <!-- Position Badge -->
             <TextView
                 android:id="@+id/positionBadge"
                 android:layout_width="36dp"
@@ -39,7 +38,6 @@
                 android:textStyle="bold"
                 tools:text="1" />
 
-            <!-- Crown image for top position -->
             <ImageView
                 android:id="@+id/crownImage"
                 android:layout_width="32dp"

@@ -97,4 +97,4 @@ public class ReleasesAdapter extends RecyclerView.Adapter<ReleasesAdapter.Releas
             });
         }
     }
-} 
+}

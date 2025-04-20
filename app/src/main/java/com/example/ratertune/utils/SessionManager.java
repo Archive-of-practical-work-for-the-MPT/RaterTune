@@ -3,10 +3,6 @@ package com.example.ratertune.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-/**
- * Класс для управления сессией пользователя
- * Сохраняет и восстанавливает данные авторизации
- */
 public class SessionManager {
     private static final String PREF_NAME = "RaterTuneSession";
     private static final String KEY_USER_ID = "userId";
@@ -94,4 +90,4 @@ public class SessionManager {
         editor.clear();
         editor.commit();
     }
-} 
+}

@@ -28,22 +28,17 @@ import com.example.ratertune.utils.SessionManager;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class AllReleasesActivity extends AppCompatActivity implements ReleasesAdapter.OnReleaseClickListener {
-    private RecyclerView releasesRecyclerView;
     private List<Release> releasesList;
     private List<Release> filteredReleasesList; // Список отфильтрованных релизов
     private ReleasesAdapter releasesAdapter;
     private SupabaseClient supabaseClient;
     private SessionManager sessionManager;
-    private Spinner sortSpinner;
     private EditText searchEditText;
     private String currentSearchQuery = "";
 
@@ -77,7 +72,7 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
         setupSearchField();
 
         // Инициализация спиннера для сортировки
-        sortSpinner = findViewById(R.id.sortSpinner);
+        Spinner sortSpinner = findViewById(R.id.sortSpinner);
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 this, R.array.sort_options, R.layout.spinner_item);
         adapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
@@ -97,7 +92,7 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
         });
 
         // Инициализация RecyclerView
-        releasesRecyclerView = findViewById(R.id.allReleasesRecyclerView);
+        RecyclerView releasesRecyclerView = findViewById(R.id.allReleasesRecyclerView);
         releasesList = new ArrayList<>();
         filteredReleasesList = new ArrayList<>();
         releasesAdapter = new ReleasesAdapter(filteredReleasesList, this, this);
@@ -385,4 +380,4 @@ public class AllReleasesActivity extends AppCompatActivity implements ReleasesAd
         }
         super.onDestroy();
     }
-} 
+}

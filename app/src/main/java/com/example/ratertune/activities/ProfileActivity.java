@@ -9,7 +9,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
@@ -43,7 +42,6 @@ public class ProfileActivity extends AppCompatActivity {
     private Button saveUsernameButton;
     private View profileProgressOverlay;
     private CircularProgressIndicator rankingProgressIndicator;
-    private View rankingContainer;
     private SessionManager sessionManager;
     private Uri selectedAvatarUri = null;
     
@@ -107,7 +105,7 @@ public class ProfileActivity extends AppCompatActivity {
         saveUsernameButton = findViewById(R.id.saveUsernameButton);
         profileProgressOverlay = findViewById(R.id.profileProgressOverlay);
         rankingProgressIndicator = findViewById(R.id.rankingProgressIndicator);
-        rankingContainer = findViewById(R.id.rankingContainer);
+        View rankingContainer = findViewById(R.id.rankingContainer);
         
         // Убираем tint с иконки профиля
         profileImage.setColorFilter(null);
@@ -153,9 +151,7 @@ public class ProfileActivity extends AppCompatActivity {
         loadUserRanking();
     }
     
-    /**
-     * Загружает информацию о рейтинге пользователя
-     */
+    // Загружает информацию о рейтинге пользователя
     private void loadUserRanking() {
         String token = sessionManager.getAccessToken();
         String userId = sessionManager.getUserId();
@@ -453,4 +449,4 @@ public class ProfileActivity extends AppCompatActivity {
         logoutButton.setEnabled(!isLoading);
         profileImage.setEnabled(!isLoading);
     }
-} 
+}

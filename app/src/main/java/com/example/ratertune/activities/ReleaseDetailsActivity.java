@@ -269,9 +269,7 @@ public class ReleaseDetailsActivity extends AppCompatActivity implements Reviews
         // Этот метод можно использовать для других действий, например, для аналитики
     }
     
-    /**
-     * Статический метод для запуска активности деталей релиза
-     */
+    // Статический метод для запуска активности деталей релиза
     public static void start(android.content.Context context, String id, String title, String artist, 
                            String imageUrl, float rating, String releaseDate) {
         android.content.Intent intent = new android.content.Intent(context, ReleaseDetailsActivity.class);
@@ -283,4 +281,4 @@ public class ReleaseDetailsActivity extends AppCompatActivity implements Reviews
         intent.putExtra("releaseDate", releaseDate);
         context.startActivity(intent);
     }
-} 
+}

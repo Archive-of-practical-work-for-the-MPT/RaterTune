@@ -122,4 +122,4 @@ public class AddStoryActivity extends AppCompatActivity {
         saveButton.setEnabled(!isLoading);
         uploadButton.setEnabled(!isLoading);
     }
-} 
+}

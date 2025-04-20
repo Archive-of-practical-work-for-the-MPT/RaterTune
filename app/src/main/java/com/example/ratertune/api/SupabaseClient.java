@@ -5,7 +5,6 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import androidx.annotation.NonNull;
 
 import com.example.ratertune.BuildConfig;
 import com.example.ratertune.models.PopularUser;
@@ -35,9 +34,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -125,24 +122,18 @@ public class SupabaseClient {
         return instance;
     }
 
-    /**
-     * Устанавливает менеджер сессии
-     */
+    // Устанавливает менеджер сессии
     public void setSessionManager(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
     }
 
-    /**
-     * Интерфейс для обратного вызова авторизации
-     */
+    // Интерфейс для обратного вызова авторизации
     public interface AuthCallback {
         void onSuccess(AuthResponse response);
         void onError(String errorMessage);
     }
 
-    /**
-     * Регистрирует нового пользователя
-     */
+    // Регистрирует нового пользователя
     public void signUp(String email, String password, AuthCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -194,9 +185,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Выполняет вход существующего пользователя
-     */
+    // Выполняет вход существующего пользователя
     public void signIn(String email, String password, AuthCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -375,17 +364,13 @@ public class SupabaseClient {
         }).start();
     }
     
-    /**
-     * Интерфейс для обратного вызова обновления профиля
-     */
+    // Интерфейс для обратного вызова обновления профиля
     public interface ProfileUpdateCallback {
         void onSuccess(User updatedUser);
         void onError(String errorMessage);
     }
 
-    /**
-     * Модель ответа аутентификации от Supabase
-     */
+    // Модель ответа аутентификации от Supabase
     public static class AuthResponse {
         @SerializedName("access_token")
         private String accessToken;
@@ -409,9 +394,7 @@ public class SupabaseClient {
         }
     }
     
-    /**
-     * Модель данных пользователя
-     */
+    // Модель данных пользователя
     public static class User {
         @SerializedName("id")
         private String id;
@@ -474,9 +457,7 @@ public class SupabaseClient {
         }
     }
 
-    /**
-     * Извлекает более подробное сообщение об ошибке из ответа сервера
-     */
+    // Извлекает более подробное сообщение об ошибке из ответа сервера
     private String parseErrorMessage(String responseBody, int statusCode) {
         // Если тело ответа пустое, возвращаем код статуса
         if (responseBody == null || responseBody.isEmpty()) {
@@ -524,17 +505,13 @@ public class SupabaseClient {
         }
     }
 
-    /**
-     * Интерфейс для обратного вызова добавления альбома
-     */
+    // Интерфейс для обратного вызова добавления альбома
     public interface ReleaseCallback {
         void onSuccess(Release release);
         void onError(String errorMessage);
     }
     
-    /**
-     * Интерфейс для обратного вызова получения списка альбомов
-     */
+    // Интерфейс для обратного вызова получения списка альбомов
     public interface ReleasesListCallback {
         void onSuccess(List<Release> releases);
         void onError(String errorMessage);
@@ -691,9 +668,7 @@ public class SupabaseClient {
         }
     }
     
-    /**
-     * Читает данные из InputStream в байтовый массив
-     */
+    // Читает данные из InputStream в байтовый массив
     private byte[] readBytes(InputStream inputStream) throws IOException {
         ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
         int bufferSize = 1024;
@@ -707,9 +682,7 @@ public class SupabaseClient {
         return byteBuffer.toByteArray();
     }
     
-    /**
-     * Создает запись об альбоме в базе данных
-     */
+    // Создает запись об альбоме в базе данных
     private void createReleaseRecord(String title, String artist, String releaseDate, 
                                    String coverUrl, String userId, String token, 
                                    ReleaseCallback callback) {
@@ -769,9 +742,7 @@ public class SupabaseClient {
         }
     }
     
-    /**
-     * Модель данных альбома
-     */
+    // Модель данных альбома
     public static class Release {
         @SerializedName("id")
         private int id;
@@ -975,9 +946,7 @@ public class SupabaseClient {
         }
     }
 
-    /**
-     * Извлекает имя пользователя из JWT токена
-     */
+    // Извлекает имя пользователя из JWT токена
     private String getUserNameFromToken(String token) {
         try {
             // JWT состоит из трех частей, разделенных точкой
@@ -1196,10 +1165,6 @@ public class SupabaseClient {
                 reviewJson.addProperty("release_id", releaseId);
                 reviewJson.addProperty("rating", rating);
                 reviewJson.addProperty("text", text);
-                // Удаляем поле release_name, так как его нет в схеме таблицы
-                // if (releaseName != null) {
-                //     reviewJson.addProperty("release_name", releaseName);
-                // }
                 
                 // Формируем запрос
                 String apiUrl = supabaseUrl + "/rest/v1/reviews";
@@ -1282,9 +1247,7 @@ public class SupabaseClient {
         }).start();
     }
     
-    /**
-     * Получает ID текущего пользователя
-     */
+    // Получает ID текущего пользователя
     private String getCurrentUserId() {
         if (sessionManager == null) {
             Log.e(TAG, "SessionManager is not initialized");
@@ -1293,9 +1256,7 @@ public class SupabaseClient {
         return sessionManager.getUserId();
     }
     
-    /**
-     * Получает имя текущего пользователя
-     */
+    // Получает имя текущего пользователя
     private String getCurrentUserName() {
         if (sessionManager == null) {
             Log.e(TAG, "SessionManager is not initialized");
@@ -1304,9 +1265,7 @@ public class SupabaseClient {
         return sessionManager.getUserName();
     }
     
-    /**
-     * Получает URL аватарки текущего пользователя
-     */
+    // Получает URL аватарки текущего пользователя
     private String getCurrentUserAvatarUrl() {
         if (sessionManager == null) {
             Log.e(TAG, "SessionManager is not initialized");
@@ -1315,9 +1274,7 @@ public class SupabaseClient {
         return sessionManager.getUserAvatarUrl();
     }
 
-    /**
-     * Добавляет новый сториз
-     */
+    // Добавляет новый сториз
     public void addStory(String text, Uri imageUri, Context context, String userId, String token, Date expiresAt, StoryCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -1345,9 +1302,7 @@ public class SupabaseClient {
         }).start();
     }
     
-    /**
-     * Создает запись о сторизе в базе данных
-     */
+    // Создает запись о сторизе в базе данных
     private void createStoryRecord(String text, String imageUrl, String userId, String token, Date expiresAt, StoryCallback callback) {
         try {
             // Создаем JSON с данными сториза
@@ -1412,9 +1367,7 @@ public class SupabaseClient {
         }
     }
 
-    /**
-     * Получает список сторизов пользователя
-     */
+    // Получает список сторизов пользователя
     public void getUserStories(String userId, String token, StoriesListCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -1583,9 +1536,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Получает список всех сторизов
-     */
+    // Получает список всех сторизов
     public void getAllStories(String token, StoriesListCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -1627,9 +1578,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Получает список всех релизов из Supabase
-     */
+    // Получает список всех релизов из Supabase
     public void getAllReleases(String token, ReleasesListCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -1723,9 +1672,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Помечает сториз как просмотренный
-     */
+    // Помечает сториз как просмотренный
     public void markStoryAsViewed(String storyId, String userId, String token, SimpleCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -1789,9 +1736,7 @@ public class SupabaseClient {
         }).start();
     }
     
-    /**
-     * Проверяет, просмотрен ли сториз пользователем
-     */
+    // Проверяет, просмотрен ли сториз пользователем
     public void isStoryViewed(String storyId, String userId, String token, ViewedCheckCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -1831,9 +1776,7 @@ public class SupabaseClient {
         }).start();
     }
     
-    /**
-     * Получает список просмотренных сторизов для пользователя
-     */
+    // Получает список просмотренных сторизов для пользователя
     public void getViewedStoriesForUser(String userId, String token, ViewedStoriesCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -1886,9 +1829,7 @@ public class SupabaseClient {
         }).start();
     }
     
-    /**
-     * Класс для представления записи о просмотренном сторизе
-     */
+    // Класс для представления записи о просмотренном сторизе
     private static class ViewedStory {
         @SerializedName("story_id")
         private String storyId;
@@ -1898,33 +1839,25 @@ public class SupabaseClient {
         }
     }
     
-    /**
-     * Интерфейс для обратного вызова при проверке просмотра сториза
-     */
+    // Интерфейс для обратного вызова при проверке просмотра сториза
     public interface ViewedCheckCallback {
         void onResult(boolean isViewed);
         void onError(String errorMessage);
     }
     
-    /**
-     * Интерфейс для обратного вызова при получении списка просмотренных сторизов
-     */
+    // Интерфейс для обратного вызова при получении списка просмотренных сторизов
     public interface ViewedStoriesCallback {
         void onSuccess(List<String> storyIds);
         void onError(String errorMessage);
     }
     
-    /**
-     * Простой интерфейс для обратного вызова
-     */
+    // Простой интерфейс для обратного вызова
     public interface SimpleCallback {
         void onSuccess();
         void onError(String errorMessage);
     }
 
-    /**
-     * Получает релиз по ID
-     */
+    // Получает релиз по ID
     public void getRelease(String releaseId, String token, ReleaseCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -1971,9 +1904,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Интерфейс для обратного вызова получения среднего рейтинга
-     */
+    // Интерфейс для обратного вызова получения среднего рейтинга
     public interface AverageRatingCallback {
         void onSuccess(float averageRating, int reviewsCount);
         void onError(String errorMessage);
@@ -2039,9 +1970,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Проверяет, поставлен ли лайк пользователем на рецензию
-     */
+    // Проверяет, поставлен ли лайк пользователем на рецензию
     public void isReviewLikedByUser(long reviewId, String token, LikeCheckCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -2095,9 +2024,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Добавляет лайк к рецензии
-     */
+    // Добавляет лайк к рецензии
     public void likeReview(long reviewId, String token, SimpleCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -2147,9 +2074,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Удаляет лайк с рецензии
-     */
+    // Удаляет лайк с рецензии
     public void unlikeReview(long reviewId, String token, SimpleCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -2200,9 +2125,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Получает количество лайков на рецензии
-     */
+    // Получает количество лайков на рецензии
     public void getReviewLikesCount(long reviewId, String token, LikesCountCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -2249,17 +2172,13 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Интерфейс обратного вызова для проверки лайка
-     */
+    // Интерфейс обратного вызова для проверки лайка
     public interface LikeCheckCallback {
         void onSuccess(boolean isLiked);
         void onError(String errorMessage);
     }
 
-    /**
-     * Интерфейс обратного вызова для получения количества лайков
-     */
+    // Интерфейс обратного вызова для получения количества лайков
     public interface LikesCountCallback {
         void onSuccess(int likesCount);
         void onError(String errorMessage);
@@ -2275,9 +2194,7 @@ public class SupabaseClient {
         void onError(String errorMessage);
     }
     
-    /**
-     * Получает список популярных пользователей на основе количества лайков на их рецензии
-     */
+    // Получает список популярных пользователей на основе количества лайков на их рецензии
     public void getPopularUsers(String token, int limit, PopularUsersCallback callback) {
         // Проверяем валидность конфигурации
         if (!isConfigValid) {
@@ -2355,9 +2272,7 @@ public class SupabaseClient {
         }).start();
     }
     
-    /**
-     * Прямой запрос для получения популярных пользователей без использования RPC
-     */
+    // Прямой запрос для получения популярных пользователей без использования RPC
     private List<PopularUser> getPopularUsersDirectQuery(String token, int limit) throws Exception {
         // Сначала получаем данные о рецензиях
         String reviewsUrl = supabaseUrl + "/rest/v1/reviews?select=id,user_id,user_name,user_avatar_url";
@@ -2449,9 +2364,7 @@ public class SupabaseClient {
         return result;
     }
     
-    /**
-     * Парсит JSON ответ и создает список PopularUser
-     */
+    // Парсит JSON ответ и создает список PopularUser
     private List<PopularUser> parsePopularUsersFromResponse(String responseBody) {
         List<PopularUser> users = new ArrayList<>();
         try {
@@ -2478,9 +2391,7 @@ public class SupabaseClient {
         void onError(String errorMessage);
     }
 
-    /**
-     * Получает статистику пользователя (количество лайков и рецензий)
-     */
+    // Получает статистику пользователя (количество лайков и рецензий)
     public void getUserStatistics(String userId, String token, UserStatisticsCallback callback) {
         if (!isConfigValid) {
             callback.onError("Configuration error: Supabase URL or Key is missing");
@@ -2503,7 +2414,7 @@ public class SupabaseClient {
                     if (response.isSuccessful() && response.body() != null) {
                         String responseBody = response.body().string();
                         JsonArray jsonArray = JsonParser.parseString(responseBody).getAsJsonArray();
-                        if (jsonArray.size() > 0) {
+                        if (!jsonArray.isEmpty()) {
                             JsonObject countObj = jsonArray.get(0).getAsJsonObject();
                             reviewsCount = countObj.get("count").getAsInt();
                         }
@@ -2552,7 +2463,7 @@ public class SupabaseClient {
                         if (response.isSuccessful() && response.body() != null) {
                             String responseBody = response.body().string();
                             JsonArray jsonArray = JsonParser.parseString(responseBody).getAsJsonArray();
-                            if (jsonArray.size() > 0) {
+                            if (!jsonArray.isEmpty()) {
                                 JsonObject countObj = jsonArray.get(0).getAsJsonObject();
                                 likesCount = countObj.get("count").getAsInt();
                             }
@@ -2571,9 +2482,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Получает рецензии, написанные пользователем
-     */
+    // Получает рецензии, написанные пользователем
     public void getUserReviews(String userId, String token, ReviewsCallback callback) {
         if (!isConfigValid) {
             callback.onError("Configuration error: Supabase URL or Key is missing");
@@ -2674,9 +2583,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Получает средний рейтинг и количество рецензий для конкретного релиза
-     */
+    // Получает средний рейтинг и количество рецензий для конкретного релиза
     public void getReleaseAverageRating(String releaseId, String token, AverageRatingCallback callback) {
         if (!isConfigValid) {
             callback.onError("Configuration error: Supabase URL or Key is missing");
@@ -2728,9 +2635,7 @@ public class SupabaseClient {
         }).start();
     }
 
-    /**
-     * Парсит JSON-ответ с рецензиями пользователя
-     */
+    // Парсит JSON-ответ с рецензиями пользователя
     private List<Review> parseReviewsFromResponse(String responseBody) {
         List<Review> reviews = new ArrayList<>();
         try {
@@ -2791,9 +2696,7 @@ public class SupabaseClient {
         return reviews;
     }
 
-    /**
-     * Проверяет, поставил ли пользователь лайк рецензии
-     */
+    // Проверяет, поставил ли пользователь лайк рецензии
     public void getLikeStatus(String reviewId, String userId, String token, LikeStatusCallback callback) {
         if (!isConfigValid) {
             callback.onError("Configuration error: Supabase URL or Key is missing");

@@ -54,19 +54,14 @@ public class PicassoCache {
                 });
     }
 
-    /**
-     * Метод для отмены всех загрузок с определенным тегом
-     * @param tag тег, по которому будут отменены загрузки
-     */
+    // Метод для отмены всех загрузок с определенным тегом
     public static void cancelTag(Object tag) {
         if (instance != null && tag != null) {
             instance.cancelTag(tag);
         }
     }
     
-    /**
-     * Метод для очистки кэша при низкой памяти
-     */
+    // Метод для очистки кэша при низкой памяти
     public static void clearCache() {
         if (instance != null) {
             // Picasso не имеет прямого метода для полной очистки кэша
@@ -74,4 +69,4 @@ public class PicassoCache {
             instance.invalidate("http");
         }
     }
-} 
+}

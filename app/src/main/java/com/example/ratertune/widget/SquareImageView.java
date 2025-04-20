@@ -25,4 +25,4 @@ public class SquareImageView extends AppCompatImageView {
         // Используем ширину в качестве размера для обеспечения квадратной формы
         super.onMeasure(widthMeasureSpec, widthMeasureSpec);
     }
-} 
+}

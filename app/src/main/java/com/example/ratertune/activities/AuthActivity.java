@@ -193,11 +193,7 @@ public class AuthActivity extends AppCompatActivity {
         }
     }
     
-    /**
-     * Показывает сообщение об ошибке авторизации с пользовательски понятным описанием
-     * @param errorMessage Техническое сообщение об ошибке
-     * @param isLogin Флаг, указывающий, произошла ли ошибка при входе или регистрации
-     */
+    // Показывает сообщение об ошибке авторизации с пользовательски понятным описанием
     private void showAuthError(String errorMessage, boolean isLogin) {
         String userFriendlyMessage;
         
@@ -262,4 +258,4 @@ public class AuthActivity extends AppCompatActivity {
         loginButton.setEnabled(!isLoading);
         registerButton.setEnabled(!isLoading);
     }
-} 
+}

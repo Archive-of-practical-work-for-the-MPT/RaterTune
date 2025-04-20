@@ -18,10 +18,7 @@ public class Config {
     private static final Map<String, String> config = new HashMap<>();
     private static boolean isInitialized = false;
 
-    /**
-     * Инициализирует конфигурацию из файла .env.properties
-     * @param context Контекст приложения
-     */
+    // Инициализирует конфигурацию из файла .env.properties
     public static void init(Context context) {
         if (isInitialized) return;
 
@@ -90,11 +87,7 @@ public class Config {
         Log.d(TAG, "Configuration loaded successfully, found " + config.size() + " properties");
     }
 
-    /**
-     * Получает значение по ключу
-     * @param key Ключ
-     * @return Значение или null, если ключ не найден
-     */
+    // Получает значение по ключу
     public static String get(String key) {
         String value = config.get(key);
         if (value == null) {
@@ -103,13 +96,8 @@ public class Config {
         return value;
     }
 
-    /**
-     * Получает значение по ключу с значением по умолчанию
-     * @param key Ключ
-     * @param defaultValue Значение по умолчанию
-     * @return Значение или defaultValue, если ключ не найден
-     */
+    // Получает значение по ключу с значением по умолчанию
     public static String get(String key, String defaultValue) {
         return config.getOrDefault(key, defaultValue);
     }
-} 
+}

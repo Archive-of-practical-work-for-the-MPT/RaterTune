@@ -19,18 +19,16 @@ import com.example.ratertune.models.Review;
 import com.example.ratertune.utils.SessionManager;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 public class AllReviewsActivity extends AppCompatActivity {
-    private RecyclerView reviewsRecyclerView;
     private List<Review> reviewsList;
     private List<Review> filteredReviewsList;
     private ReviewsAdapter reviewsAdapter;
     private SupabaseClient supabaseClient;
     private SessionManager sessionManager;
-    private Spinner filterSpinner;
-    
+
     // Константы для фильтрации
     private static final int FILTER_ALL = 0;
     private static final int FILTER_HIGH_RATING = 1;
@@ -48,7 +46,7 @@ public class AllReviewsActivity extends AppCompatActivity {
         // Инициализация toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setTitle("Все рецензии");
 
         // Инициализация SupabaseClient и SessionManager
@@ -56,7 +54,7 @@ public class AllReviewsActivity extends AppCompatActivity {
         sessionManager = new SessionManager(this);
 
         // Инициализация спиннера для фильтрации
-        filterSpinner = findViewById(R.id.filterSpinner);
+        Spinner filterSpinner = findViewById(R.id.filterSpinner);
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 this, R.array.review_filter_options, R.layout.spinner_item);
         adapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
@@ -76,7 +74,7 @@ public class AllReviewsActivity extends AppCompatActivity {
         });
 
         // Инициализация RecyclerView
-        reviewsRecyclerView = findViewById(R.id.allReviewsRecyclerView);
+        RecyclerView reviewsRecyclerView = findViewById(R.id.allReviewsRecyclerView);
         reviewsList = new ArrayList<>();
         filteredReviewsList = new ArrayList<>();
         reviewsAdapter = new ReviewsAdapter(filteredReviewsList, this::onReviewClick);
@@ -245,4 +243,4 @@ public class AllReviewsActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-} 
+}

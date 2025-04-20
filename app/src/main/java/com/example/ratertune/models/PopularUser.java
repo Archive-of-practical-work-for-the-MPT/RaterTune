@@ -19,10 +19,6 @@ public class PopularUser {
     @SerializedName("reviews_count")
     private int reviewsCount;
     
-    public PopularUser() {
-        // Пустой конструктор для Gson
-    }
-    
     public PopularUser(String userId, String userName, String avatarUrl, int likesCount, int reviewsCount) {
         this.userId = userId;
         this.userName = userName;
@@ -70,4 +66,4 @@ public class PopularUser {
     public void setReviewsCount(int reviewsCount) {
         this.reviewsCount = reviewsCount;
     }
-} 
+}

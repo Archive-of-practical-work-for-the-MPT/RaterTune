@@ -62,7 +62,7 @@ public class PopularUsersAdapter extends RecyclerView.Adapter<PopularUsersAdapte
         
         // Настройка цветов для разных позиций
         if (displayPosition == 1) {
-            holder.positionBadge.setBackgroundResource(R.drawable.circle_background); // золотой
+            holder.positionBadge.setBackgroundResource(R.drawable.circle_background);
         } else if (displayPosition == 2) {
             holder.positionBadge.setBackgroundResource(R.drawable.silver_circle);
         } else if (displayPosition == 3) {
@@ -104,4 +104,4 @@ public class PopularUsersAdapter extends RecyclerView.Adapter<PopularUsersAdapte
             reviewsCount = itemView.findViewById(R.id.reviewsCount);
         }
     }
-} 
+}

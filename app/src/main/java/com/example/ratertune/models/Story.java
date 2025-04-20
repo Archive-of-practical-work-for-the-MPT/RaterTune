@@ -24,10 +24,6 @@ public class Story {
     // Локальное поле для отслеживания просмотра, не сериализуется
     private boolean viewed = false;
     
-    public Story() {
-        // Пустой конструктор для Gson
-    }
-    
     public Story(String id, String text, String imageUrl, String userId, String createdAt, String expiresAt) {
         this.id = id;
         this.text = text;
@@ -92,4 +88,4 @@ public class Story {
     public void setViewed(boolean viewed) {
         this.viewed = viewed;
     }
-} 
+}

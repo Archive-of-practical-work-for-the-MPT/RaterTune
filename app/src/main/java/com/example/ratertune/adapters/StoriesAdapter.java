@@ -88,11 +88,7 @@ public class StoriesAdapter extends RecyclerView.Adapter<StoriesAdapter.StoryVie
         }
     }
     
-    /**
-     * Обновляет статус просмотра для сториза
-     * @param storyId ID сториза
-     * @param isViewed статус просмотра
-     */
+    // Обновляет статус просмотра для сториза
     public void updateStoryViewedStatus(String storyId, boolean isViewed) {
         for (int i = 0; i < stories.size(); i++) {
             Story story = stories.get(i);
@@ -103,4 +99,4 @@ public class StoriesAdapter extends RecyclerView.Adapter<StoriesAdapter.StoryVie
             }
         }
     }
-} 
+}

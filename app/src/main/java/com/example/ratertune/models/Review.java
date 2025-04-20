@@ -55,10 +55,6 @@ public class Review {
     
     private static final SimpleDateFormat outputFormat = new SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault());
 
-    public Review() {
-        // Default constructor required for Gson
-    }
-
     public Review(long id, String userId, String userName, String userAvatarUrl, String releaseId, float rating, String text, String createdAt, String updatedAt) {
         this.id = id;
         this.userId = userId;
@@ -204,7 +200,6 @@ public class Review {
                         break;
                     }
                 } catch (ParseException e) {
-                    // Continue to the next format
                 }
             }
             
@@ -214,11 +209,11 @@ public class Review {
                 return formattedDate;
             } else {
                 Log.e(TAG, "Could not parse date: " + createdAt);
-                return createdAt; // Return raw date if parsing fails
+                return createdAt;
             }
         } catch (Exception e) {
             Log.e(TAG, "Error formatting date: " + e.getMessage(), e);
-            return createdAt; // Return raw date on error
+            return createdAt;
         }
     }
-} 
+}

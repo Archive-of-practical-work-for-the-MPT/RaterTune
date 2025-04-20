@@ -16,9 +16,6 @@ import com.example.ratertune.models.Review;
 import com.example.ratertune.utils.PicassoCache;
 import com.example.ratertune.utils.SessionManager;
 import com.squareup.picasso.Picasso;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -263,4 +260,4 @@ public class ReviewsAdapter extends RecyclerView.Adapter<ReviewsAdapter.ReviewVi
             });
         }
     }
-} 
+}

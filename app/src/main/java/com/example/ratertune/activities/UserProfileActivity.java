@@ -25,9 +25,7 @@ import java.util.List;
 
 public class UserProfileActivity extends AppCompatActivity {
     private static final String TAG = "UserProfileActivity";
-    
-    private ShapeableImageView userAvatar;
-    private TextView userName;
+
     private TextView likesCount;
     private TextView reviewsCount;
     private RecyclerView userReviewsRecyclerView;
@@ -41,8 +39,6 @@ public class UserProfileActivity extends AppCompatActivity {
     private ReviewsAdapter reviewsAdapter;
     
     private String userId;
-    private String userNameStr;
-    private String userAvatarUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,8 +47,8 @@ public class UserProfileActivity extends AppCompatActivity {
         
         // Получаем переданные данные
         userId = getIntent().getStringExtra("userId");
-        userNameStr = getIntent().getStringExtra("userName");
-        userAvatarUrl = getIntent().getStringExtra("userAvatarUrl");
+        String userNameStr = getIntent().getStringExtra("userName");
+        String userAvatarUrl = getIntent().getStringExtra("userAvatarUrl");
         
         if (userId == null) {
             Toast.makeText(this, "Ошибка загрузки профиля пользователя", Toast.LENGTH_SHORT).show();
@@ -65,8 +61,8 @@ public class UserProfileActivity extends AppCompatActivity {
         sessionManager = new SessionManager(this);
         
         // Инициализация UI элементов
-        userAvatar = findViewById(R.id.userAvatar);
-        userName = findViewById(R.id.userName);
+        ShapeableImageView userAvatar = findViewById(R.id.userAvatar);
+        TextView userName = findViewById(R.id.userName);
         likesCount = findViewById(R.id.likesCount);
         reviewsCount = findViewById(R.id.reviewsCount);
         userReviewsRecyclerView = findViewById(R.id.userReviewsRecyclerView);
@@ -242,9 +238,7 @@ public class UserProfileActivity extends AppCompatActivity {
         progressOverlay.setVisibility(isLoading ? View.VISIBLE : View.GONE);
     }
     
-    /**
-     * Статический метод для запуска активности
-     */
+    // Статический метод для запуска активности
     public static void start(android.content.Context context, String userId, String userName, String userAvatarUrl) {
         android.content.Intent intent = new android.content.Intent(context, UserProfileActivity.class);
         intent.putExtra("userId", userId);

@@ -595,10 +595,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         });
     }
     
-    /**
-     * Отображает визуально топ релизы за месяц
-     * @param ratedReleases список релизов с рейтингами
-     */
+    // Отображает визуально топ релизы за месяц
     private void displayTopMonthlyReleases(List<Release> ratedReleases) {
         // Сортируем релизы по рейтингу (от высокого к низкому)
         Collections.sort(ratedReleases, new Comparator<Release>() {
@@ -707,9 +704,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         );
     }
     
-    /**
-     * Загружает список популярных пользователей
-     */
+    // Загружает список популярных пользователей
     private void loadPopularUsers() {
         String token = sessionManager.getAccessToken();
         
