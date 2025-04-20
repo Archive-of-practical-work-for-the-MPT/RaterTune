@@ -1196,9 +1196,10 @@ public class SupabaseClient {
                 reviewJson.addProperty("release_id", releaseId);
                 reviewJson.addProperty("rating", rating);
                 reviewJson.addProperty("text", text);
-                if (releaseName != null) {
-                    reviewJson.addProperty("release_name", releaseName);
-                }
+                // Удаляем поле release_name, так как его нет в схеме таблицы
+                // if (releaseName != null) {
+                //     reviewJson.addProperty("release_name", releaseName);
+                // }
                 
                 // Формируем запрос
                 String apiUrl = supabaseUrl + "/rest/v1/reviews";
@@ -1221,24 +1222,54 @@ public class SupabaseClient {
                 Log.d(TAG, "Review creation response: " + responseBody);
                 
                 if (response.isSuccessful() && !responseBody.isEmpty()) {
-                    // Парсим ответ
-                    JSONObject responseJson = new JSONObject(responseBody);
-                    Log.d(TAG, "Review created successfully: " + responseBody);
-                    
-                    // Создаем объект Review на основе полученных данных
-                    Review review = new Review(
-                        responseJson.getLong("id"),
-                        userId,
-                        userName,
-                        userAvatarUrl,
-                        releaseId,
-                        releaseName,
-                        rating,
-                        text,
-                        responseJson.getString("created_at"),
-                        responseJson.optString("updated_at", null)
-                    );
-                    callback.onSuccess(review);
+                    try {
+                        // Проверяем, является ли ответ массивом
+                        if (responseBody.trim().startsWith("[")) {
+                            // Парсим ответ как массив и берем первый элемент
+                            JSONArray jsonArray = new JSONArray(responseBody);
+                            if (jsonArray.length() > 0) {
+                                JSONObject responseJson = jsonArray.getJSONObject(0);
+                                Log.d(TAG, "Review created successfully: " + responseBody);
+                                
+                                // Создаем объект Review на основе полученных данных
+                                Review review = new Review(
+                                    responseJson.getLong("id"),
+                                    userId,
+                                    userName,
+                                    userAvatarUrl,
+                                    releaseId,
+                                    rating,
+                                    text,
+                                    responseJson.getString("created_at"),
+                                    responseJson.optString("updated_at", null)
+                                );
+                                callback.onSuccess(review);
+                            } else {
+                                callback.onError("Empty response array");
+                            }
+                        } else {
+                            // Старый код для обработки одиночного объекта
+                            JSONObject responseJson = new JSONObject(responseBody);
+                            Log.d(TAG, "Review created successfully: " + responseBody);
+                            
+                            // Создаем объект Review на основе полученных данных
+                            Review review = new Review(
+                                responseJson.getLong("id"),
+                                userId,
+                                userName,
+                                userAvatarUrl,
+                                releaseId,
+                                rating,
+                                text,
+                                responseJson.getString("created_at"),
+                                responseJson.optString("updated_at", null)
+                            );
+                            callback.onSuccess(review);
+                        }
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error parsing review response", e);
+                        callback.onError("Error parsing response: " + e.getMessage());
+                    }
                 } else {
                     String errorMessage = parseErrorMessage(responseBody, response.code());
                     callback.onError("Failed to create review: " + errorMessage);

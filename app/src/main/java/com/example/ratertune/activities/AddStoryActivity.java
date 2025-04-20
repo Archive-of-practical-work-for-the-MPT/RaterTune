@@ -21,6 +21,7 @@ import com.squareup.picasso.Picasso;
 
 import java.util.Calendar;
 import java.util.Date;
+import java.util.Objects;
 
 public class AddStoryActivity extends AppCompatActivity {
     private ImageView storyImage;
@@ -68,7 +69,7 @@ public class AddStoryActivity extends AppCompatActivity {
     }
 
     private void saveStory() {
-        String text = storyTextInput.getText().toString().trim();
+        String text = Objects.requireNonNull(storyTextInput.getText()).toString().trim();
 
         if (text.isEmpty() || selectedImageUri == null) {
             Toast.makeText(this, "Пожалуйста, добавьте изображение и текст", Toast.LENGTH_SHORT).show();
