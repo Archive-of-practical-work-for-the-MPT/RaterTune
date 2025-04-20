@@ -188,68 +188,70 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
+                    android:orientation="vertical"
                     android:padding="24dp">
 
-                    <LinearLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
+                        android:layout_marginBottom="16dp"
+                        android:text="Ваш рейтинг среди пользователей"
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
                         android:gravity="center"
-                        android:orientation="vertical">
+                        android:fontFamily="sans-serif-medium" />
+
+                    <FrameLayout
+                        android:id="@+id/rankingContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:minHeight="70dp">
 
                         <TextView
-                            android:id="@+id/reviewsCountText"
+                            android:id="@+id/userRankingText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="0"
-                            android:textColor="@color/text_primary"
-                            android:textSize="28sp"
+                            android:text="-"
+                            android:textColor="@color/accent"
+                            android:textSize="42sp"
                             android:fontFamily="sans-serif-medium"
-                            android:textStyle="bold" />
+                            android:textStyle="bold"
+                            android:layout_gravity="center" />
 
                         <TextView
+                            android:id="@+id/totalUsersText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Рецензий"
+                            android:text="Нет рейтинга"
                             android:textColor="@color/text_secondary"
-                            android:textSize="14sp"
+                            android:textSize="18sp"
+                            android:layout_gravity="center"
+                            android:visibility="gone"
                             android:fontFamily="sans-serif" />
 
-                    </LinearLayout>
+                        <com.google.android.material.progressindicator.CircularProgressIndicator
+                            android:id="@+id/rankingProgressIndicator"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:indeterminate="true"
+                            app:indicatorColor="@color/accent"
+                            app:indicatorSize="40dp"
+                            app:trackColor="@color/transparent_white"
+                            app:trackThickness="4dp"
+                            android:visibility="gone" />
 
-                    <View
-                        android:layout_width="1dp"
-                        android:layout_height="match_parent"
-                        android:background="@color/text_secondary"
-                        android:alpha="0.2" />
+                    </FrameLayout>
 
-                    <LinearLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
+                        android:text="Основано на активности и популярности"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp"
+                        android:layout_marginTop="8dp"
                         android:gravity="center"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:id="@+id/averageRatingText"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="0.0"
-                            android:textColor="@color/text_primary"
-                            android:textSize="28sp"
-                            android:fontFamily="sans-serif-medium"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Средняя оценка"
-                            android:textColor="@color/text_secondary"
-                            android:textSize="14sp"
-                            android:fontFamily="sans-serif" />
-
-                    </LinearLayout>
+                        android:fontFamily="sans-serif" />
 
                 </LinearLayout>
 

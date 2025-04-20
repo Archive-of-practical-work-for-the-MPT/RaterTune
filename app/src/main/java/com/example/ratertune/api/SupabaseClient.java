@@ -5,8 +5,10 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import androidx.annotation.NonNull;
 
 import com.example.ratertune.BuildConfig;
+import com.example.ratertune.models.PopularUser;
 import com.example.ratertune.models.Review;
 import com.example.ratertune.utils.Config;
 import com.example.ratertune.utils.SessionManager;
@@ -32,9 +34,14 @@ import java.net.URL;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.MediaType;
@@ -2131,23 +2138,27 @@ public class SupabaseClient {
 
         new Thread(() -> {
             try {
-                String queryUrl = supabaseUrl + "/rest/v1/review_likes?user_id=eq." + userId
-                        + "&review_id=eq." + reviewId;
+                // Используем параметры запроса в URL для фильтрации записей, которые нужно удалить
+                String queryUrl = supabaseUrl + "/rest/v1/review_likes?user_id=eq." + userId + "&review_id=eq." + reviewId;
 
+                // Строим запрос с правильными заголовками
                 Request request = new Request.Builder()
                         .url(queryUrl)
                         .addHeader("apikey", supabaseKey)
                         .addHeader("Authorization", "Bearer " + token)
-                        .delete()
+                        .addHeader("Content-Type", "application/json")
+                        .addHeader("Prefer", "return=minimal")
+                        .delete()  // Используем DELETE без тела запроса
                         .build();
 
                 try (Response response = client.newCall(request).execute()) {
                     if (response.isSuccessful()) {
+                        Log.d(TAG, "Successfully unliked review: " + reviewId + " with status " + response.code());
                         callback.onSuccess();
                     } else {
                         String errorBody = response.body() != null ? response.body().string() : "";
-                        Log.e(TAG, "Error unliking review: " + errorBody);
-                        callback.onError("Error: " + response.code());
+                        Log.e(TAG, "Error unliking review: " + errorBody + ", status: " + response.code());
+                        callback.onError("Error: " + response.code() + " - " + errorBody);
                     }
                 }
             } catch (Exception e) {
@@ -2220,5 +2231,208 @@ public class SupabaseClient {
     public interface LikesCountCallback {
         void onSuccess(int likesCount);
         void onError(String errorMessage);
+    }
+
+    public interface PopularUsersCallback {
+        void onSuccess(List<PopularUser> users);
+        void onError(String errorMessage);
+    }
+    
+    /**
+     * Получает список популярных пользователей на основе количества лайков на их рецензии
+     */
+    public void getPopularUsers(String token, int limit, PopularUsersCallback callback) {
+        // Проверяем валидность конфигурации
+        if (!isConfigValid) {
+            callback.onError("Configuration error: Supabase URL or Key is missing");
+            return;
+        }
+
+        if (token == null || token.isEmpty()) {
+            callback.onError("Authentication error: Token is missing");
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                // SQL запрос для получения популярных пользователей с агрегированием данных
+                String query = "SELECT r.user_id, r.user_name, r.user_avatar_url, " +
+                               "COUNT(DISTINCT rl.id) as likes_count, " +
+                               "COUNT(DISTINCT r.id) as reviews_count " +
+                               "FROM reviews r " +
+                               "LEFT JOIN review_likes rl ON r.id = rl.review_id " +
+                               "GROUP BY r.user_id, r.user_name, r.user_avatar_url " +
+                               "ORDER BY likes_count DESC, reviews_count DESC " +
+                               "LIMIT " + limit;
+
+                String encodedQuery = java.net.URLEncoder.encode(query, "UTF-8");
+                String url = supabaseUrl + "/rest/v1/rpc/get_popular_users?query=" + encodedQuery;
+
+                Request request = new Request.Builder()
+                        .url(url)
+                        .addHeader("apikey", supabaseKey)
+                        .addHeader("Authorization", "Bearer " + token)
+                        .addHeader("Content-Type", "application/json")
+                        .get()
+                        .build();
+
+                try (Response response = client.newCall(request).execute()) {
+                    if (response.isSuccessful() && response.body() != null) {
+                        String responseBody = response.body().string();
+                        
+                        // Альтернативный вариант запроса - напрямую через SQL функцию в Supabase
+                        // Для этого нужно создать функцию get_popular_users в Supabase
+                        List<PopularUser> users = parsePopularUsersFromResponse(responseBody);
+                        
+                        // Если не удалось распарсить через функцию, используем прямой запрос
+                        if (users.isEmpty()) {
+                            Log.w(TAG, "Failed to use SQL function, using direct query");
+                            users = getPopularUsersDirectQuery(token, limit);
+                        }
+                        
+                        callback.onSuccess(users);
+                    } else {
+                        String errorMessage = "Error: " + response.code();
+                        if (response.body() != null) {
+                            errorMessage += " - " + response.body().string();
+                        }
+                        
+                        // Если RPC метод не существует, пробуем прямой запрос
+                        Log.w(TAG, "RPC method failed: " + errorMessage);
+                        List<PopularUser> users = getPopularUsersDirectQuery(token, limit);
+                        callback.onSuccess(users);
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting popular users", e);
+                
+                try {
+                    // В случае ошибки пробуем прямой запрос
+                    List<PopularUser> users = getPopularUsersDirectQuery(token, limit);
+                    callback.onSuccess(users);
+                } catch (Exception ex) {
+                    Log.e(TAG, "Error in fallback query", ex);
+                    callback.onError("Error: " + e.getMessage());
+                }
+            }
+        }).start();
+    }
+    
+    /**
+     * Прямой запрос для получения популярных пользователей без использования RPC
+     */
+    private List<PopularUser> getPopularUsersDirectQuery(String token, int limit) throws Exception {
+        // Сначала получаем данные о рецензиях
+        String reviewsUrl = supabaseUrl + "/rest/v1/reviews?select=id,user_id,user_name,user_avatar_url";
+        Request reviewsRequest = new Request.Builder()
+                .url(reviewsUrl)
+                .addHeader("apikey", supabaseKey)
+                .addHeader("Authorization", "Bearer " + token)
+                .get()
+                .build();
+                
+        List<Review> reviews = new ArrayList<>();
+        List<PopularUser> result = new ArrayList<>();
+                
+        try (Response reviewsResponse = client.newCall(reviewsRequest).execute()) {
+            if (reviewsResponse.isSuccessful() && reviewsResponse.body() != null) {
+                String reviewsBody = reviewsResponse.body().string();
+                JSONArray reviewsArray = new JSONArray(reviewsBody);
+                
+                // Временное хранилище для подсчета лайков и рецензий для каждого пользователя
+                Map<String, Integer> reviewsCountMap = new HashMap<>();
+                Map<String, Integer> likesCountMap = new HashMap<>();
+                Map<String, String> userNameMap = new HashMap<>();
+                Map<String, String> userAvatarMap = new HashMap<>();
+                
+                // Собираем информацию о пользователях и количестве их рецензий
+                for (int i = 0; i < reviewsArray.length(); i++) {
+                    JSONObject reviewObj = reviewsArray.getJSONObject(i);
+                    long reviewId = reviewObj.getLong("id");
+                    String userId = reviewObj.getString("user_id");
+                    String userName = reviewObj.getString("user_name");
+                    String avatarUrl = reviewObj.optString("user_avatar_url", "");
+                    
+                    // Увеличиваем счетчик рецензий
+                    reviewsCountMap.put(userId, reviewsCountMap.getOrDefault(userId, 0) + 1);
+                    
+                    // Сохраняем имя и аватар пользователя
+                    userNameMap.put(userId, userName);
+                    userAvatarMap.put(userId, avatarUrl);
+                    
+                    // Получаем количество лайков для этой рецензии
+                    String likesUrl = supabaseUrl + "/rest/v1/review_likes?review_id=eq." + reviewId + "&select=id";
+                    Request likesRequest = new Request.Builder()
+                            .url(likesUrl)
+                            .addHeader("apikey", supabaseKey)
+                            .addHeader("Authorization", "Bearer " + token)
+                            .get()
+                            .build();
+                            
+                    try (Response likesResponse = client.newCall(likesRequest).execute()) {
+                        if (likesResponse.isSuccessful() && likesResponse.body() != null) {
+                            String likesBody = likesResponse.body().string();
+                            JSONArray likesArray = new JSONArray(likesBody);
+                            int likesCount = likesArray.length();
+                            
+                            // Добавляем количество лайков к общему счету пользователя
+                            likesCountMap.put(userId, likesCountMap.getOrDefault(userId, 0) + likesCount);
+                        }
+                    }
+                }
+                
+                // Создаем список популярных пользователей
+                for (String userId : reviewsCountMap.keySet()) {
+                    PopularUser user = new PopularUser(
+                        userId,
+                        userNameMap.getOrDefault(userId, "Пользователь"),
+                        userAvatarMap.getOrDefault(userId, ""),
+                        likesCountMap.getOrDefault(userId, 0),
+                        reviewsCountMap.getOrDefault(userId, 0)
+                    );
+                    result.add(user);
+                }
+                
+                // Сортируем по количеству лайков и затем по количеству рецензий
+                Collections.sort(result, (u1, u2) -> {
+                    if (u1.getLikesCount() != u2.getLikesCount()) {
+                        return Integer.compare(u2.getLikesCount(), u1.getLikesCount());
+                    } else {
+                        return Integer.compare(u2.getReviewsCount(), u1.getReviewsCount());
+                    }
+                });
+                
+                // Ограничиваем количество результатов
+                if (result.size() > limit) {
+                    result = result.subList(0, limit);
+                }
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * Парсит JSON ответ и создает список PopularUser
+     */
+    private List<PopularUser> parsePopularUsersFromResponse(String responseBody) {
+        List<PopularUser> users = new ArrayList<>();
+        try {
+            JSONArray jsonArray = new JSONArray(responseBody);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject json = jsonArray.getJSONObject(i);
+                PopularUser user = new PopularUser(
+                    json.getString("user_id"),
+                    json.getString("user_name"),
+                    json.optString("user_avatar_url", ""),
+                    json.getInt("likes_count"),
+                    json.getInt("reviews_count")
+                );
+                users.add(user);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error parsing popular users", e);
+        }
+        return users;
     }
 }

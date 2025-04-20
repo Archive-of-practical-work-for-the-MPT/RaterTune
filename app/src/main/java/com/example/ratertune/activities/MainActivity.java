@@ -16,11 +16,13 @@ import com.example.ratertune.adapters.ReleasesAdapter;
 import com.example.ratertune.adapters.ReviewsAdapter;
 import com.example.ratertune.adapters.StoriesAdapter;
 import com.example.ratertune.adapters.TopMonthlyReleasesAdapter;
+import com.example.ratertune.adapters.PopularUsersAdapter;
 import com.example.ratertune.api.SupabaseClient;
 import com.example.ratertune.api.StoriesListCallback;
 import com.example.ratertune.models.Release;
 import com.example.ratertune.models.Review;
 import com.example.ratertune.models.Story;
+import com.example.ratertune.models.PopularUser;
 import com.example.ratertune.utils.PicassoCache;
 import com.example.ratertune.utils.SessionManager;
 import java.util.ArrayList;
@@ -42,6 +44,9 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     private RecyclerView topMonthlyReleasesRecyclerView;
     private TextView noMonthlyReleasesText;
     
+    private RecyclerView popularUsersRecyclerView;
+    private TextView noPopularUsersText;
+    
     private SupabaseClient supabaseClient;
     private SessionManager sessionManager;
     
@@ -56,6 +61,9 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
     
     private List<Review> latestReviewsList;
     private ReviewsAdapter latestReviewsAdapter;
+    
+    private List<PopularUser> popularUsersList;
+    private PopularUsersAdapter popularUsersAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -75,6 +83,9 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         
         topMonthlyReleasesRecyclerView = findViewById(R.id.topMonthlyReleasesRecyclerView);
         noMonthlyReleasesText = findViewById(R.id.noMonthlyReleasesText);
+        
+        popularUsersRecyclerView = findViewById(R.id.popularUsersRecyclerView);
+        noPopularUsersText = findViewById(R.id.noPopularUsersText);
         
         ImageButton profileButton = findViewById(R.id.profileButton);
         ImageButton addStoryButton = findViewById(R.id.addStoryButton);
@@ -151,11 +162,19 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         topMonthlyReleasesRecyclerView.setLayoutManager(topReleasesLayoutManager);
         topMonthlyReleasesRecyclerView.setAdapter(topMonthlyReleasesAdapter);
         
+        // Настройка RecyclerView для популярных пользователей
+        popularUsersList = new ArrayList<>();
+        popularUsersAdapter = new PopularUsersAdapter(popularUsersList, this, this::onUserClick);
+        LinearLayoutManager popularUsersLayoutManager = new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false);
+        popularUsersRecyclerView.setLayoutManager(popularUsersLayoutManager);
+        popularUsersRecyclerView.setAdapter(popularUsersAdapter);
+        
         // Загрузка данных
         loadUserStories();
         loadUserReleases();
         loadLatestReviews();
         loadMonthlyStatistics();
+        loadPopularUsers();
     }
     
     @Override
@@ -166,6 +185,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         loadUserReleases();
         loadLatestReviews();
         loadMonthlyStatistics();
+        loadPopularUsers();
     }
     
     @Override
@@ -672,6 +692,68 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
             public void onError(String errorMessage) {
                 runOnUiThread(() -> {
                     Toast.makeText(MainActivity.this, "Ошибка загрузки релиза: " + errorMessage, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private void onUserClick(PopularUser user) {
+        // В будущем можно добавить переход на профиль пользователя
+        Toast.makeText(this, "Выбран пользователь: " + user.getUserName(), Toast.LENGTH_SHORT).show();
+    }
+    
+    /**
+     * Загружает список популярных пользователей
+     */
+    private void loadPopularUsers() {
+        String token = sessionManager.getAccessToken();
+        
+        if (token == null || token.isEmpty()) {
+            Toast.makeText(this, "Ошибка авторизации", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Показываем индикатор загрузки
+        noPopularUsersText.setVisibility(View.VISIBLE);
+        noPopularUsersText.setText("Загрузка...");
+        popularUsersRecyclerView.setVisibility(View.GONE);
+        
+        // Максимальное количество пользователей для отображения
+        final int MAX_POPULAR_USERS = 5;
+        
+        supabaseClient.getPopularUsers(token, MAX_POPULAR_USERS, new SupabaseClient.PopularUsersCallback() {
+            @Override
+            public void onSuccess(List<PopularUser> users) {
+                runOnUiThread(() -> {
+                    if (users == null || users.isEmpty()) {
+                        noPopularUsersText.setText("Нет популярных пользователей");
+                        noPopularUsersText.setVisibility(View.VISIBLE);
+                        popularUsersRecyclerView.setVisibility(View.GONE);
+                    } else {
+                        noPopularUsersText.setVisibility(View.GONE);
+                        popularUsersRecyclerView.setVisibility(View.VISIBLE);
+                        
+                        popularUsersList.clear();
+                        popularUsersList.addAll(users);
+                        popularUsersAdapter.notifyDataSetChanged();
+                        
+                        // Предварительно загружаем аватарки в кэш
+                        for (PopularUser user : users) {
+                            if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
+                                PicassoCache.preloadImage(MainActivity.this, user.getAvatarUrl());
+                            }
+                        }
+                    }
+                });
+            }
+            
+            @Override
+            public void onError(String errorMessage) {
+                runOnUiThread(() -> {
+                    Log.e(TAG, "Ошибка загрузки популярных пользователей: " + errorMessage);
+                    noPopularUsersText.setText("Ошибка загрузки данных");
+                    noPopularUsersText.setVisibility(View.VISIBLE);
+                    popularUsersRecyclerView.setVisibility(View.GONE);
                 });
             }
         });

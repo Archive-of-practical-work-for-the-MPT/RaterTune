@@ -16,28 +16,34 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import com.example.ratertune.R;
 import com.example.ratertune.api.SupabaseClient;
+import com.example.ratertune.models.PopularUser;
 import com.example.ratertune.utils.SessionManager;
 import com.google.android.material.imageview.ShapeableImageView;
+import com.google.android.material.progressindicator.CircularProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.squareup.picasso.Picasso;
 
+import java.util.List;
 import java.util.Objects;
 
 public class ProfileActivity extends AppCompatActivity {
     private static final int MAX_IMAGE_SIZE_MB = 5; // Максимальный размер изображения в МБ
+    private static final int TOP_USERS_COUNT = 20; // Количество пользователей в топе
 
     private ShapeableImageView profileImage;
     private TextView userNameText;
     private TextView userEmailText;
-    private TextView reviewsCountText;
-    private TextView averageRatingText;
+    private TextView userRankingText;
+    private TextView totalUsersText;
     private Button logoutButton;
     private TextInputLayout usernameLayout;
     private TextInputEditText usernameInput;
     private Button saveUsernameButton;
     private View profileProgressOverlay;
+    private CircularProgressIndicator rankingProgressIndicator;
+    private View rankingContainer;
     private SessionManager sessionManager;
     private Uri selectedAvatarUri = null;
     
@@ -93,13 +99,15 @@ public class ProfileActivity extends AppCompatActivity {
         profileImage = findViewById(R.id.profileImage);
         userNameText = findViewById(R.id.userNameText);
         userEmailText = findViewById(R.id.userEmailText);
-        reviewsCountText = findViewById(R.id.reviewsCountText);
-        averageRatingText = findViewById(R.id.averageRatingText);
+        userRankingText = findViewById(R.id.userRankingText);
+        totalUsersText = findViewById(R.id.totalUsersText);
         logoutButton = findViewById(R.id.logoutButton);
         usernameLayout = findViewById(R.id.usernameLayout);
         usernameInput = findViewById(R.id.usernameInput);
         saveUsernameButton = findViewById(R.id.saveUsernameButton);
         profileProgressOverlay = findViewById(R.id.profileProgressOverlay);
+        rankingProgressIndicator = findViewById(R.id.rankingProgressIndicator);
+        rankingContainer = findViewById(R.id.rankingContainer);
         
         // Убираем tint с иконки профиля
         profileImage.setColorFilter(null);
@@ -141,9 +149,95 @@ public class ProfileActivity extends AppCompatActivity {
             loadProfileImage(avatarUrl);
         }
 
-        // TODO: Загрузка статистики из Supabase
-        reviewsCountText.setText("0");
-        averageRatingText.setText("0.0");
+        // Загрузка информации о рейтинге пользователя
+        loadUserRanking();
+    }
+    
+    /**
+     * Загружает информацию о рейтинге пользователя
+     */
+    private void loadUserRanking() {
+        String token = sessionManager.getAccessToken();
+        String userId = sessionManager.getUserId();
+        
+        if (token == null || userId == null) {
+            showError("Ошибка авторизации");
+            return;
+        }
+        
+        // Показываем локальный индикатор загрузки только для блока рейтинга
+        showRankingLoading(true);
+        
+        // Запрашиваем топ-20 пользователей
+        SupabaseClient.getInstance().getPopularUsers(token, TOP_USERS_COUNT, new SupabaseClient.PopularUsersCallback() {
+            @Override
+            public void onSuccess(List<PopularUser> users) {
+                runOnUiThread(() -> {
+                    showRankingLoading(false);
+                    
+                    if (users == null || users.isEmpty()) {
+                        userRankingText.setText("-");
+                        totalUsersText.setText("Нет данных");
+                        totalUsersText.setVisibility(View.VISIBLE);
+                        return;
+                    }
+                    
+                    int userRank = findUserRanking(users, userId);
+                    
+                    if (userRank > 0) {
+                        // Пользователь входит в топ-20
+                        userRankingText.setText(String.valueOf(userRank));
+                        totalUsersText.setVisibility(View.GONE);
+                    } else {
+                        // Пользователь не входит в топ-20
+                        userRankingText.setText("-");
+                        totalUsersText.setText("Нет в топ-" + TOP_USERS_COUNT);
+                        totalUsersText.setVisibility(View.VISIBLE);
+                    }
+                });
+            }
+            
+            @Override
+            public void onError(String errorMessage) {
+                runOnUiThread(() -> {
+                    showRankingLoading(false);
+                    userRankingText.setText("-");
+                    totalUsersText.setText("Ошибка загрузки");
+                    totalUsersText.setVisibility(View.VISIBLE);
+                });
+            }
+        });
+    }
+    
+    /**
+     * Показывает или скрывает индикатор загрузки только для блока рейтинга
+     */
+    private void showRankingLoading(boolean isLoading) {
+        if (rankingProgressIndicator != null) {
+            rankingProgressIndicator.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+        }
+        
+        // Скрываем или показываем текст во время загрузки
+        if (userRankingText != null && totalUsersText != null) {
+            userRankingText.setVisibility(isLoading ? View.INVISIBLE : View.VISIBLE);
+            totalUsersText.setVisibility(isLoading ? View.INVISIBLE : View.VISIBLE);
+        }
+    }
+    
+    /**
+     * Находит рейтинг пользователя в списке популярных пользователей
+     * @param users список популярных пользователей
+     * @param userId ID пользователя
+     * @return рейтинг пользователя (начиная с 1) или 0, если пользователь не найден
+     */
+    private int findUserRanking(List<PopularUser> users, String userId) {
+        for (int i = 0; i < users.size(); i++) {
+            PopularUser user = users.get(i);
+            if (user.getUserId().equals(userId)) {
+                return i + 1; // +1 потому что позиции в списке начинаются с 0
+            }
+        }
+        return 0; // Пользователь не найден в рейтинге
     }
     
     /**
