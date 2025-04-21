@@ -1,0 +1,131 @@
+@startuml
+' Цветовая схема
+!define UI_COLOR #1976D2
+!define LOGIC_COLOR #388E3C
+!define DATA_COLOR #FFA000
+!define EXTERNAL_COLOR #7B1FA2
+
+' Настройки отображения
+skinparam componentStyle rectangle
+skinparam backgroundColor white
+skinparam defaultTextAlignment center
+
+' Компоненты пользовательского интерфейса
+rectangle "Слой пользовательского интерфейса" as UI #UI_COLOR {
+    package "Активности (Activities)" as Activities {
+        [MainActivity] as MainActivity
+        [AuthActivity] as AuthActivity
+        [ProfileActivity] as ProfileActivity
+        [ReleaseDetailsActivity] as ReleaseDetailsActivity
+        [AllReleasesActivity] as AllReleasesActivity
+        [AddReleaseActivity] as AddReleaseActivity
+        [AllReviewsActivity] as AllReviewsActivity
+        [StoryViewActivity] as StoryViewActivity
+        [UserProfileActivity] as UserProfileActivity
+        [AddStoryActivity] as AddStoryActivity
+    }
+    
+    package "Адаптеры" as Adapters {
+        [ReleasesAdapter] as ReleasesAdapter
+        [ReviewsAdapter] as ReviewsAdapter
+        [StoriesAdapter] as StoriesAdapter
+        [PopularUsersAdapter] as PopularUsersAdapter
+        [TopMonthlyReleasesAdapter] as TopMonthlyReleasesAdapter
+    }
+    
+    package "Представления (Views)" as Views {
+        [Пользовательские виджеты] as CustomWidgets
+        [Макеты (Layouts)] as Layouts
+    }
+}
+
+' Слой бизнес-логики
+rectangle "Слой бизнес-логики" as Logic #LOGIC_COLOR {
+    [Обработка действий пользователя] as UserActions
+    [Управление сессией] as SessionManagement
+    [Обработка данных релизов] as ReleaseProcessing
+    [Обработка данных обзоров] as ReviewProcessing
+    [Управление историями] as StoryManagement
+    [Валидация данных] as DataValidation
+}
+
+' Слой данных
+rectangle "Слой данных" as Data #DATA_COLOR {
+    package "Модели данных" as Models {
+        [Release] as ReleaseModel
+        [Review] as ReviewModel
+        [PopularUser] as UserModel
+        [Story] as StoryModel
+    }
+    
+    package "Хранилища данных" as Repositories {
+        [Локальное хранилище] as LocalStorage
+        [Кэш изображений] as ImageCache
+        [Настройки приложения] as AppSettings
+    }
+    
+    package "API клиент" as APIClient {
+        [SupabaseClient] as SupabaseClient
+        [Обработчики обратных вызовов] as Callbacks
+    }
+}
+
+' Внешние сервисы
+rectangle "Внешние сервисы" as External #EXTERNAL_COLOR {
+    package "Supabase BaaS" as SupabaseService {
+        database "База данных PostgreSQL" as Database
+        [Хранилище файлов] as Storage
+        [Аутентификация] as Auth
+    }
+}
+
+' Связи между компонентами
+
+' UI к Logic
+Activities --> Logic : вызывает
+Adapters --> Logic : использует
+
+' Logic к Data
+Logic --> Models : использует
+Logic --> Repositories : запрашивает\nданные
+Logic --> APIClient : выполняет\nзапросы
+
+' Repositories к API
+Repositories --> APIClient : использует
+APIClient --> External : отправляет/\nполучает данные
+
+' Adapters к Models
+Adapters --> Models : отображает
+
+' UI взаимодействия
+MainActivity ..> AuthActivity : запускает
+MainActivity ..> ProfileActivity : запускает
+MainActivity ..> ReleaseDetailsActivity : запускает
+MainActivity ..> AllReleasesActivity : запускает
+ProfileActivity ..> UserProfileActivity : запускает
+ReleaseDetailsActivity ..> AllReviewsActivity : запускает
+
+' Адаптеры к данным
+ReleasesAdapter ..> ReleaseModel : отображает
+ReviewsAdapter ..> ReviewModel : отображает
+StoriesAdapter ..> StoryModel : отображает
+PopularUsersAdapter ..> UserModel : отображает
+
+' Хранение и кэширование
+ImageCache ..> External : загружает\nизображения
+
+' Сессия
+SessionManagement ..> Auth : использует для\nавторизации
+
+title Архитектурная схема мобильного приложения "RaterTune"
+caption Структура слоев и взаимодействие компонентов
+
+legend right
+  **Легенда**
+  <#1976D2> Слой пользовательского интерфейса
+  <#388E3C> Слой бизнес-логики
+  <#FFA000> Слой данных
+  <#7B1FA2> Внешние сервисы
+endlegend
+
+@enduml 

@@ -1,13 +1,21 @@
 package com.example.ratertune.activities;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.pdf.PdfDocument;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -25,6 +33,9 @@ import com.example.ratertune.models.Story;
 import com.example.ratertune.models.PopularUser;
 import com.example.ratertune.utils.PicassoCache;
 import com.example.ratertune.utils.SessionManager;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -37,6 +48,7 @@ import java.util.Date;
 public class MainActivity extends AppCompatActivity implements ReleasesAdapter.OnReleaseClickListener, TopMonthlyReleasesAdapter.OnReleaseClickListener {
     private static final String TAG = "MainActivity";
     private static final int MAX_TOP_RELEASES = 5;
+    private static final int REQUEST_CODE_CREATE_PDF = 101;
 
     private RecyclerView latestReviewsRecyclerView;
     private TextView noLatestReviewsText;
@@ -90,6 +102,7 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         ImageButton profileButton = findViewById(R.id.profileButton);
         ImageButton addStoryButton = findViewById(R.id.addStoryButton);
         ImageButton addReleaseButton = findViewById(R.id.addReleaseButton);
+        ImageButton exportMonthlyHitsButton = findViewById(R.id.exportMonthlyHitsButton);
         TextView viewAllReleasesButton = findViewById(R.id.viewAllReleasesButton);
         TextView viewAllReviewsButton = findViewById(R.id.viewAllReviewsButton);
 
@@ -116,6 +129,14 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
         viewAllReviewsButton.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, AllReviewsActivity.class);
             startActivity(intent);
+        });
+        
+        exportMonthlyHitsButton.setOnClickListener(v -> {
+            if (topMonthlyReleasesList.isEmpty()) {
+                Toast.makeText(MainActivity.this, "Нет хитов месяца для экспорта", Toast.LENGTH_SHORT).show();
+            } else {
+                exportMonthlyHitsToPdf();
+            }
         });
         
         // Настройка RecyclerView для сторизов
@@ -757,5 +778,108 @@ public class MainActivity extends AppCompatActivity implements ReleasesAdapter.O
                 });
             }
         });
+    }
+
+    // Экспортирует топ релизы месяца в PDF файл
+    private void exportMonthlyHitsToPdf() {
+        // Проверяем, есть ли данные для экспорта
+        if (topMonthlyReleasesList == null || topMonthlyReleasesList.isEmpty()) {
+            Toast.makeText(this, "Нет данных для экспорта", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        // Получаем текущий месяц и год для названия файла
+        Calendar calendar = Calendar.getInstance();
+        String monthYear = new SimpleDateFormat("MMMM_yyyy", Locale.getDefault()).format(calendar.getTime());
+        
+        // Создаем интент для выбора места сохранения файла
+        Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("application/pdf");
+        intent.putExtra(Intent.EXTRA_TITLE, "top_releases_" + monthYear + ".pdf");
+        
+        // Запускаем выбор места сохранения
+        startActivityForResult(intent, REQUEST_CODE_CREATE_PDF);
+    }
+    
+    // Создает PDF и сохраняет его по указанному URI
+    private void createAndSavePdf(Uri uri) {
+        // Получаем текущий месяц и год для заголовка
+        Calendar calendar = Calendar.getInstance();
+        
+        // Создаем PDF документ
+        PdfDocument document = new PdfDocument();
+        
+        // Создаем страницу
+        PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
+        PdfDocument.Page page = document.startPage(pageInfo);
+        
+        // Получаем Canvas для рисования
+        Canvas canvas = page.getCanvas();
+        
+        // Настройка шрифтов
+        Paint titlePaint = new Paint();
+        titlePaint.setColor(Color.BLACK);
+        titlePaint.setTextSize(20);
+        titlePaint.setFakeBoldText(true);
+        
+        Paint subtitlePaint = new Paint();
+        subtitlePaint.setColor(Color.DKGRAY);
+        subtitlePaint.setTextSize(14);
+        
+        Paint textPaint = new Paint();
+        textPaint.setColor(Color.BLACK);
+        textPaint.setTextSize(12);
+        
+        // Рисуем заголовок
+        String title = "Хиты месяца - " + new SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(calendar.getTime());
+        canvas.drawText(title, 50, 50, titlePaint);
+        
+        // Подзаголовок
+        canvas.drawText("RaterTune - Топ 5 релизов", 50, 80, subtitlePaint);
+        
+        // Отображаем список релизов
+        int yPosition = 120;
+        for (int i = 0; i < topMonthlyReleasesList.size(); i++) {
+            Release release = topMonthlyReleasesList.get(i);
+            String ranking = (i + 1) + ".";
+            String releaseInfo = release.getArtist() + " - " + release.getTitle();
+            String ratingInfo = "Рейтинг: " + String.format("%.1f", release.getRating());
+            
+            canvas.drawText(ranking, 50, yPosition, textPaint);
+            canvas.drawText(releaseInfo, 70, yPosition, textPaint);
+            canvas.drawText(ratingInfo, 70, yPosition + 20, textPaint);
+            
+            yPosition += 50; // Отступ между записями
+        }
+        
+        // Завершаем страницу
+        document.finishPage(page);
+        
+        // Сохраняем PDF в указанный URI
+        try {
+            OutputStream outputStream = getContentResolver().openOutputStream(uri);
+            document.writeTo(outputStream);
+            document.close();
+            outputStream.close();
+            
+            Toast.makeText(this, "PDF успешно сохранен", Toast.LENGTH_SHORT).show();
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Ошибка при создании PDF: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        
+        if (requestCode == REQUEST_CODE_CREATE_PDF && resultCode == RESULT_OK) {
+            if (data != null && data.getData() != null) {
+                Uri uri = data.getData();
+                createAndSavePdf(uri);
+            }
+        }
     }
 }

@@ -1,0 +1,162 @@
+@startuml
+skinparam backgroundColor white
+skinparam DefaultFontName Arial
+skinparam ArrowColor #666666
+skinparam Shadowing false
+skinparam Padding 5
+skinparam roundcorner 10
+skinparam titleBorderRoundCorner 15
+skinparam titleBorderThickness 1
+skinparam titleBorderColor #999999
+skinparam titleBackgroundColor #F8F8F8
+
+' Определение стилей
+skinparam rectangle {
+    BackgroundColor #F8F8F8
+    BorderColor #999999
+    BorderThickness 1
+}
+
+skinparam note {
+    BackgroundColor #FFF9C4
+    BorderColor #FFD54F
+    BorderThickness 1
+}
+
+rectangle "Тестирование мобильного приложения RaterTune" as AppTesting {
+    rectangle "Функциональное тестирование" as FunctionalTesting #E3F2FD {
+        rectangle "Авторизация и регистрация" as AuthTesting
+        note bottom of AuthTesting
+        - Вход с корректными данными
+        - Вход с некорректными данными
+        - Регистрация нового пользователя
+        - Восстановление пароля
+        - Выход из аккаунта
+        end note
+        
+        rectangle "Навигация и переходы" as NavigationTesting
+        note bottom of NavigationTesting
+        - Переходы между экранами
+        - Работа кнопки "Назад"
+        - Боковое меню
+        - Нижняя навигация
+        - История переходов
+        end note
+        
+        rectangle "Работа с релизами" as ReleaseTesting
+        note bottom of ReleaseTesting
+        - Просмотр списка релизов
+        - Просмотр детальной информации
+        - Добавление нового релиза
+        - Редактирование существующего
+        - Фильтрация и сортировка
+        end note
+        
+        rectangle "Работа с обзорами" as ReviewTesting
+        note bottom of ReviewTesting
+        - Добавление обзора
+        - Оценка релиза
+        - Просмотр обзоров
+        - Редактирование обзора
+        - Удаление обзора
+        end note
+        
+        rectangle "Работа с профилем" as ProfileTesting
+        note bottom of ProfileTesting
+        - Просмотр личного профиля
+        - Просмотр профилей других пользователей
+        - Редактирование профиля
+        - История активности
+        end note
+        
+        rectangle "Функциональность историй" as StoryTesting
+        note bottom of StoryTesting
+        - Просмотр историй
+        - Добавление новой истории
+        - Удаление истории
+        - Реакции на истории
+        end note
+    }
+    
+    rectangle "Тестирование производительности" as PerformanceTesting #E8F5E9 {
+        rectangle "Скорость загрузки" as LoadSpeedTesting
+        note bottom of LoadSpeedTesting
+        - Запуск приложения
+        - Загрузка списков
+        - Загрузка изображений
+        - Переход между экранами
+        - Кэширование данных
+        end note
+        
+        rectangle "Использование ресурсов" as ResourceTesting
+        note bottom of ResourceTesting
+        - Потребление памяти
+        - Использование CPU
+        - Энергопотребление
+        - Сетевой трафик
+        - Размер кэша
+        end note
+        
+        rectangle "Стресс-тестирование" as StressTesting
+        note bottom of StressTesting
+        - Работа с большими списками
+        - Многозадачность
+        - Длительное использование
+        - Частые обновления данных
+        - Работа в фоновом режиме
+        end note
+        
+        rectangle "Офлайн-режим" as OfflineTesting
+        note bottom of OfflineTesting
+        - Доступность функций офлайн
+        - Синхронизация данных
+        - Обработка потери соединения
+        - Восстановление соединения
+        end note
+    }
+    
+    rectangle "Проверка интерфейса" as UITesting #FFF3E0 {
+        rectangle "Соответствие макетам" as DesignTesting
+        note bottom of DesignTesting
+        - Цветовая схема
+        - Шрифты и размеры
+        - Отступы и выравнивание
+        - Иконки и изображения
+        - Анимации и переходы
+        end note
+        
+        rectangle "Адаптивность" as ResponsiveTesting
+        note bottom of ResponsiveTesting
+        - Различные разрешения экрана
+        - Портретная и ландшафтная ориентация
+        - Различные плотности пикселей
+        - Разные размеры экрана
+        end note
+        
+        rectangle "Доступность" as AccessibilityTesting
+        note bottom of AccessibilityTesting
+        - Поддержка TalkBack
+        - Высокая контрастность
+        - Масштабирование текста
+        - Альтернативные методы ввода
+        - Цветовая слепота
+        end note
+        
+        rectangle "Локализация" as LocalizationTesting
+        note bottom of LocalizationTesting
+        - Поддержка русского языка
+        - Поддержка английского языка
+        - Проверка переводов
+        - Форматы дат и чисел
+        end note
+    }
+}
+
+' Связи между основными категориями, чтобы управлять размещением
+FunctionalTesting -[hidden]-> PerformanceTesting
+PerformanceTesting -[hidden]-> UITesting
+
+title Схема тестирования мобильного приложения "RaterTune"
+caption Функциональное тестирование | Тестирование производительности | Проверка интерфейса
+
+@enduml 

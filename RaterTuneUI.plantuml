@@ -1,0 +1,125 @@
+@startuml
+skinparam backgroundColor white
+skinparam DefaultFontName Arial
+skinparam ArrowColor #666666
+skinparam Shadowing false
+skinparam roundcorner 10
+skinparam titleBorderRoundCorner 15
+skinparam titleBorderThickness 1
+skinparam titleBackgroundColor #F8F8F8
+
+skinparam rectangle {
+    BorderColor #999999
+    BackgroundColor #FAFAFA
+    FontColor #333333
+    BorderThickness 1
+    Shadowing false
+}
+
+skinparam arrow {
+    Color #666666
+    Thickness 1
+}
+
+' Экраны приложения
+rectangle "Авторизация\n(AuthActivity)" as Auth #E8EAF6 {
+    rectangle "Вход" as Login
+    rectangle "Регистрация" as Register
+    rectangle "Восстановление пароля" as Recovery
+}
+
+rectangle "Главный экран\n(MainActivity)" as Main #E3F2FD {
+    rectangle "Лента релизов" as Feed
+    rectangle "Популярные релизы месяца" as Popular
+    rectangle "Истории пользователей" as Stories
+    rectangle "Популярные пользователи" as Users
+    rectangle "Новые обзоры" as RecentReviews
+    rectangle "Поиск" as Search
+    rectangle "Нижняя навигация" as NavBar
+}
+
+rectangle "Профиль пользователя\n(ProfileActivity)" as Profile #E0F2F1 {
+    rectangle "Личная информация" as PersonalInfo
+    rectangle "Мои обзоры" as MyReviews
+    rectangle "Настройки" as Settings
+    rectangle "Избранное" as Favorites
+}
+
+rectangle "Просмотр профиля\n(UserProfileActivity)" as UserProfile #E0F2F1 {
+    rectangle "Информация о пользователе" as UserInfo
+    rectangle "Обзоры пользователя" as UserReviews
+}
+
+rectangle "Детали релиза\n(ReleaseDetailsActivity)" as ReleaseDetails #E0F7FA {
+    rectangle "Информация о релизе" as ReleaseInfo
+    rectangle "Обзоры" as Reviews
+    rectangle "Рейтинг" as Rating
+    rectangle "Добавить обзор" as AddReview
+}
+
+rectangle "Все релизы\n(AllReleasesActivity)" as AllReleases #E0F7FA {
+    rectangle "Список всех релизов" as ReleasesList
+    rectangle "Фильтры" as Filters
+    rectangle "Сортировка" as Sort
+}
+
+rectangle "Добавление релиза\n(AddReleaseActivity)" as AddRelease #F3E5F5 {
+    rectangle "Форма добавления" as ReleaseForm
+    rectangle "Загрузка обложки" as UploadCover
+}
+
+rectangle "Все обзоры\n(AllReviewsActivity)" as AllReviews #FFF3E0 {
+    rectangle "Список обзоров" as ReviewsList
+    rectangle "Сортировка обзоров" as ReviewSort
+}
+
+rectangle "Просмотр истории\n(StoryViewActivity)" as StoryView #FAFAFA {
+    rectangle "Просмотр" as ViewStory
+    rectangle "Реакции" as Reactions
+}
+
+rectangle "Добавление истории\n(AddStoryActivity)" as AddStory #F3E5F5 {
+    rectangle "Выбор фото" as ChoosePhoto
+    rectangle "Публикация" as Publish
+}
+
+' Связи между экранами
+Auth --> Main : Успешная авторизация
+Main --> Auth : Выход
+
+Main --> Profile : Переход в профиль
+Main --> UserProfile : Просмотр профиля пользователя
+Main --> ReleaseDetails : Просмотр релиза
+Main --> AllReleases : Все релизы
+Main --> AddRelease : Добавить релиз
+Main --> AllReviews : Все обзоры
+Main --> StoryView : Просмотр истории
+Main --> AddStory : Добавить историю
+
+Profile --> UserProfile : Просмотр другого профиля
+Profile --> ReleaseDetails : Просмотр релиза из избранного
+
+ReleaseDetails --> AllReviews : Все обзоры релиза
+ReleaseDetails --> UserProfile : Автор релиза/обзора
+
+AllReleases --> ReleaseDetails : Выбор релиза
+AllReleases --> AddRelease : Добавить новый
+
+AllReviews --> ReleaseDetails : К релизу
+AllReviews --> UserProfile : К автору обзора
+
+title Схема пользовательского интерфейса "RaterTune"
+caption Основные экраны и переходы между ними
+
+legend right
+  **Цветовая легенда**
+  <#E8EAF6> Авторизация
+  <#E3F2FD> Главный экран
+  <#E0F2F1> Профили пользователей
+  <#E0F7FA> Работа с релизами
+  <#FFF3E0> Работа с обзорами
+  <#F3E5F5> Добавление контента
+  <#FAFAFA> Просмотр историй
+endlegend
+
+@enduml 
