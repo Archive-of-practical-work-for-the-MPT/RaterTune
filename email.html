@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Helvetica Neue',Arial,sans-serif;color:#333;">
+    <!-- Прехедер-текст -->
+    <div style="display:none;max-height:0;overflow:hidden;">
+        Подтвердите email, чтобы начать использовать RaterTune
+    </div>
+    
+    <div style="max-width:600px;margin:20px auto;background:#fff;">
+        <!-- Шапка -->
+        <div style="background:#6C5CE7;padding:20px;text-align:center;border-radius:10px 10px 0 0;">
+            <div style="color:#fff;font-size:40px;">🎵</div>
+            <h1 style="color:#fff;margin:0;font-size:24px;">Добро пожаловать в RaterTune!</h1>
+        </div>
+
+        <!-- Контент -->
+        <div style="padding:30px 25px;background:#f8f9fa;">
+            <p style="margin:0 0 15px; font-size: 16px;">Привет, рады видеть тебя в RaterTune!</p>
+            
+            <p style="margin:0 0 20px; line-height:1.5;">Всего один шаг отделяет тебя от:</p>
+            <ul style="margin:0 0 25px;padding-left:20px;">
+                <li style="margin-bottom:12px; padding-left:25px; no-repeat left center;">
+                    Профессиональных рецензий
+                </li>
+                <li style="margin-bottom:12px; padding-left:25px; no-repeat left center;">
+                    Оценивания своих любимых альбомов и исполнителей
+                </li>
+                <li style="padding-left:25px; no-repeat left center;">
+                    Сообщество кому не все равно на музыку
+                </li>
+            </ul>
+
+            <p style="text-align:center; margin:25px 0; font-weight:500;">Жми ниже и погружайся в мир осознанной музыки!</p>
+
+            <div style="text-align:center;">
+                <a href="{{ .ConfirmationURL }}" 
+                   style="display:inline-block;padding:12px 30px;background:#6C5CE7;color:#fff;text-decoration:none;border-radius:25px;font-weight:bold;"
+                   rel="noopener noreferrer"
+                   target="_blank">
+                    Подтвердить Email
+                </a>
+            </div>
+        </div>
+
+        <!-- Футер -->
+        <div style="text-align:center;padding:15px;background:#e9ecef;color:#666;font-size:12px;">
+            <p style="margin:5px 0;">С уважением, команда RaterTune</p>
+            <p style="margin:5px 0;">
+                <a href="mailto:support@ratertune.com" style="color:#666;text-decoration:underline;">Поддержка</a> | 
+                <a href="{{ .UnsubscribeURL }}" style="color:#666;text-decoration:underline;">Отписаться</a>
+            </p>
+            <p style="margin:5px 0;">© 2025 RaterTune. Все права защищены</p>
+        </div>
+    </div>
+</body>
+</html>
