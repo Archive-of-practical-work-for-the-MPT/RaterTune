@@ -35,5 +35,35 @@
 - Retrofit
 - Material Design
 
+## Инструкция по запуску
+Так как Supabase не может предоставить мне бэкап в free версии, то опишу словами.
+1. Скачайте приложение RaterTune из GitHub
+2. В папке assets переименуйте файл [venv](https://github.com/Archive-of-practical-work-for-the-MPT/RaterTune/blob/main/app/src/main/assets/.venv.properties) в env.
+3. Зарегестрируйтесь в Supabase и создайте среду
+4. Нажмите Connect выберите App Frameworks и оттуда скопируйте URL и TOKEN в env файл
+5. Создайте базу данных как представлено ниже на картинке
+
+<p align="center">
+      <img src="https://github.com/user-attachments/assets/ec30a28b-9541-4ce5-8b25-3d12fd6c024e" alt="База данных" width="800">
+</p>
+
+6. Перейдите в раздел Policies и выдайте права всем таблицам на SELECT и INSERT, таблице review_likes также выдайте право на DELETE, в условии везде пишите true.
+7. Во вкладке Storage создайте 3 Buckets: covers, avatars, stories
+8. В SQL Editor введите эти две команды:
+
+```
+ALTER TABLE review_likes 
+ADD CONSTRAINT review_likes_user_id_review_id_key 
+UNIQUE (user_id, review_id);
+```
+
+```
+CREATE UNIQUE INDEX viewed_stories_user_story_idx 
+ON viewed_stories (user_id, story_id);
+```
+9. Перейдите в Authentication и во вкладке Email в message body скопируйте html из [файла](https://github.com/Archive-of-practical-work-for-the-MPT/RaterTune/blob/main/email.html).
+10. Можете запускать приложение, зарегестрируйтесь, на вашу почту придет подтверждение регистрации, нажмите на кнопку, после чего возвращайтесь в приложение и уже авторизовывайтесь. Вроде должно все работать.
+
+
 # Вывод
 В результате выполнения курсового проекта было разработано мобильное приложение RaterTune для платформы Android, предназначенное для управления музыкальными впечатлениями, рецензиями и социального взаимодействия. В ходе работы были успешно решены все поставленные задачи и достигнуты намеченные цели проекта.
